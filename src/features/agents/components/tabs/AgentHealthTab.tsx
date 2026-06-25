@@ -1,11 +1,11 @@
-import React from 'react';
 import { Agent } from '@/features/agents/types';
 import { Activity, CheckCircle2, XCircle } from 'lucide-react';
+import { isAgentLaunchable } from '@/features/agents/utils/launchability';
 
 export function AgentHealthTab({ agent }: { agent: Agent }) {
   const hasAppPath = !!agent.app_path;
   const hasConfigPath = !!agent.config_path;
-  const isLaunchable = !!agent.app_path || !!agent.launch_command;
+  const isLaunchable = isAgentLaunchable(agent);
 
   return (
     <div className="space-y-4">
@@ -37,7 +37,7 @@ export function AgentHealthTab({ agent }: { agent: Agent }) {
         <Activity className="w-8 h-8 mb-3 opacity-50" />
         <h3 className="text-sm font-medium text-foreground mb-1">高级健康检查</h3>
         <p className="text-xs max-w-sm">
-          真实的本机文件存在性验证和依赖检测将在未来版本提供。
+          深度健康检查尚未启用；当前仅展示已配置字段的基础状态。
         </p>
       </div>
     </div>

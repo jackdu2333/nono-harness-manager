@@ -1,12 +1,12 @@
-import React from 'react';
 import { Agent } from '@/features/agents/types';
 import { Play, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAgentsStore } from '@/features/agents/store';
+import { getAgentLaunchUnavailableReason, isAgentLaunchable } from '@/features/agents/utils/launchability';
 
 export function AgentLaunchTab({ agent }: { agent: Agent }) {
   const launchAgent = useAgentsStore(s => s.launchAgent);
-  const isLaunchable = !!agent.app_path || !!agent.launch_command;
+  const isLaunchable = isAgentLaunchable(agent);
 
   const handleLaunch = async () => {
     if (isLaunchable) {
@@ -23,7 +23,7 @@ export function AgentLaunchTab({ agent }: { agent: Agent }) {
               <Play className="w-4 h-4 text-primary" /> 启动配置 (Launch Config)
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              通过应用路径或自定义命令启动此 Agent 客户端。
+              第一阶段仅支持安全启动 macOS App。
             </p>
           </div>
           <Button onClick={handleLaunch} disabled={!isLaunchable} className="shrink-0 gap-2">
@@ -34,7 +34,7 @@ export function AgentLaunchTab({ agent }: { agent: Agent }) {
         {!isLaunchable && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-sm">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>无法启动：缺少应用路径或启动命令配置。</span>
+            <span>{getAgentLaunchUnavailableReason(agent)}</span>
           </div>
         )}
       </div>

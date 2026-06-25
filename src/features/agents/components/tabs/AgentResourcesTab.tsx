@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link2 } from 'lucide-react';
 
 export function AgentResourcesTab() {
@@ -7,7 +6,7 @@ export function AgentResourcesTab() {
       <Link2 className="w-10 h-10 mb-4 opacity-50" />
       <h3 className="text-sm font-medium text-foreground mb-1">资源绑定功能尚未启用</h3>
       <p className="text-xs max-w-sm">
-        未来将在此处展示和管理当前 Agent 绑定的 Skills、MCP、Memory 和 Knowledge 库。
+        资源绑定尚未接入真实数据，当前不展示统计数字。
       </p>
     </div>
   );

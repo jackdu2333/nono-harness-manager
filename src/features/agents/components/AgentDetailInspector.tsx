@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Agent } from '../types';
 import { Box, Play } from 'lucide-react';
 import { AgentOverviewTab } from './tabs/AgentOverviewTab';
@@ -9,6 +9,7 @@ import { AgentHealthTab } from './tabs/AgentHealthTab';
 import { getAgentBrandStyles } from '../utils/brandStyles';
 import { useAgentsStore } from '../store';
 import { Button } from '@/components/ui/button';
+import { isAgentLaunchable } from '../utils/launchability';
 
 interface Props {
   agent: Agent | null;
@@ -40,7 +41,7 @@ export function AgentDetailInspector({ agent }: Props) {
 
   const brand = getAgentBrandStyles(agent.name, agent.type);
   const Icon = brand.Icon;
-  const isLaunchable = !!agent.app_path || !!agent.launch_command;
+  const isLaunchable = isAgentLaunchable(agent);
   
   const typeDesc = agent.type === 'CLI' ? '命令行客户端' : agent.type === 'IDE Plugin' ? '编辑器集成插件' : '桌面客户端';
   const desc = agent.description || typeDesc;
@@ -108,7 +109,7 @@ export function AgentDetailInspector({ agent }: Props) {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">绑定资源</span>
-            <span className="font-medium text-foreground">S:0 / M:0 / K:0</span>
+            <span className="font-medium text-muted-foreground">未启用</span>
           </div>
         </div>
 

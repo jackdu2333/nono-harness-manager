@@ -1,5 +1,3 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Box, RefreshCw, ScanLine, Search, Folders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +17,6 @@ export function MCPToolbar({
   totalCount, activeCount, searchQuery, setSearchQuery, 
   onRefresh, isLoading, onDiscoverSystem, onOpenScanDrawer 
 }: Props) {
-  const { t } = useTranslation();
-
   return (
     <div className="flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-sm z-10 px-6 py-4 flex flex-col gap-4">
       {/* Top Row: Title, Stats, and Action Buttons */}
@@ -46,10 +42,6 @@ export function MCPToolbar({
             <div className="flex flex-col">
               <span className="text-green-500 text-[10px] uppercase font-semibold">Active</span>
               <span className="font-medium text-foreground leading-none">{activeCount}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-blue-500 text-[10px] uppercase font-semibold">Tools</span>
-              <span className="font-medium text-foreground leading-none">0</span>
             </div>
           </div>
         </div>
@@ -78,10 +70,6 @@ export function MCPToolbar({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-9 bg-secondary/30 border-border/50 text-sm focus-visible:ring-1"
           />
-        </div>
-        {/* Placeholder for future select filters (Status, Category, Source) */}
-        <div className="text-xs text-muted-foreground ml-2 hidden sm:block">
-          更多筛选功能将在未来版本提供...
         </div>
       </div>
     </div>

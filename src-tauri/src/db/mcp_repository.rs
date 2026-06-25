@@ -4,8 +4,12 @@ use crate::models::mcp::McpServer;
 pub async fn add_mcp_server(pool: &SqlitePool, server: &McpServer) -> Result<(), Error> {
     sqlx::query(
         r#"
-        INSERT INTO mcp_servers (id, name, description, category, command, args, env, source_path, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO mcp_servers (
+            id, name, description, category, command, args, env, source_path,
+            summary, tags, confidence, evidence_files, manual_override, last_analyzed_at,
+            status, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#
     )
     .bind(&server.id)
@@ -16,6 +20,12 @@ pub async fn add_mcp_server(pool: &SqlitePool, server: &McpServer) -> Result<(),
     .bind(&server.args)
     .bind(&server.env)
     .bind(&server.source_path)
+    .bind(&server.summary)
+    .bind(&server.tags)
+    .bind(&server.confidence)
+    .bind(&server.evidence_files)
+    .bind(server.manual_override)
+    .bind(&server.last_analyzed_at)
     .bind(&server.status)
     .bind(&server.created_at)
     .bind(&server.updated_at)
@@ -28,7 +38,10 @@ pub async fn add_mcp_server(pool: &SqlitePool, server: &McpServer) -> Result<(),
 pub async fn list_mcp_servers(pool: &SqlitePool) -> Result<Vec<McpServer>, Error> {
     let servers = sqlx::query_as::<_, McpServer>(
         r#"
-        SELECT id, name, description, category, command, args, env, source_path, status, created_at, updated_at
+        SELECT
+            id, name, description, category, command, args, env, source_path,
+            summary, tags, confidence, evidence_files, manual_override, last_analyzed_at,
+            status, created_at, updated_at
         FROM mcp_servers
         ORDER BY created_at DESC
         "#

@@ -23,6 +23,12 @@ export interface Skill {
   description_confidence: string | null;
   description_updated_at: string | null;
   description_is_manual: number | null;
+  summary: string | null;
+  tags: string | null;
+  confidence: string | null;
+  evidence_files: string | null;
+  manual_override: number | null;
+  last_analyzed_at: string | null;
   status: string;
   entry_file: string | null;
   metadata_path: string | null;

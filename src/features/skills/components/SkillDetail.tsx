@@ -51,16 +51,9 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   const handleReExtract = async () => {
     if (!skill || !skill.source_id) return;
     if (skill.description_is_manual === 1) {
-      const confirm = window.confirm("当前描述为您手动编辑的，重新提取将覆盖您的手动描述。确定要继续吗？");
-      if (!confirm) return;
-      alert("请清空描述后再扫描，或等待后台提供专门的重置接口。");
       return;
     }
     await scanSource(skill.source_id);
-  };
-
-  const handleAIGenerate = () => {
-    alert("AI 描述生成尚未启用");
   };
 
   const getSourceLabel = (src: string | null) => {
@@ -118,11 +111,11 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
                     {skill.description}
                   </ReactMarkdown>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground italic py-2">
-                  暂无描述，可点击生成描述
-                </div>
-              )}
+	      ) : (
+	        <div className="text-sm text-muted-foreground italic py-2">
+	          暂无描述，可手动编辑描述
+	        </div>
+	      )}
               
               {skill.description_source && (
                 <div className="mt-3 flex items-center gap-2 pt-3 border-t border-border/50">
@@ -143,14 +136,14 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
               )}
             </div>
           )}
-          
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 text-xs bg-card text-foreground border-border" onClick={handleAIGenerate}>
-              <Wand2 className="w-3 h-3 mr-1.5" /> AI 生成
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1 text-xs bg-card text-foreground border-border" onClick={handleReExtract} disabled={isScanning}>
-              <RefreshCw className={`w-3 h-3 mr-1.5 ${isScanning ? 'animate-spin' : ''}`} /> 重新提取
-            </Button>
+	          
+	          <div className="flex gap-2">
+	            <Button variant="outline" size="sm" className="flex-1 text-xs bg-card text-muted-foreground border-border" disabled>
+	              <Wand2 className="w-3 h-3 mr-1.5" /> AI 未启用
+	            </Button>
+	            <Button variant="outline" size="sm" className="flex-1 text-xs bg-card text-foreground border-border" onClick={handleReExtract} disabled={isScanning || skill.description_is_manual === 1}>
+	              <RefreshCw className={`w-3 h-3 mr-1.5 ${isScanning ? 'animate-spin' : ''}`} /> 重新提取
+	            </Button>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
-import React from 'react';
 import { Agent } from '../types';
 import { Play, MoreHorizontal, Settings, Trash2, GripVertical } from 'lucide-react';
 import { getAgentBrandStyles } from '../utils/brandStyles';
+import { isAgentLaunchable } from '../utils/launchability';
 import { useAgentsStore } from '../store';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,7 +42,7 @@ export function AgentListItem({ agent, isSelected, onSelect, isDragOverlay = fal
   
   const brand = getAgentBrandStyles(agent.name, agent.type);
   const Icon = brand.Icon;
-  const isLaunchable = !!agent.app_path || !!agent.launch_command;
+  const isLaunchable = isAgentLaunchable(agent);
   const hasConfig = !!agent.config_path;
 
   let statusColor = 'bg-gray-400';
@@ -135,11 +135,8 @@ export function AgentListItem({ agent, isSelected, onSelect, isDragOverlay = fal
 
       {/* Right: Resources & Actions */}
       <div className="shrink-0 flex flex-col items-end gap-3 h-full relative z-20">
-        {/* Resource Counts - Muted */}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="bg-secondary/50 px-1.5 py-0.5 rounded">Skills 0</span>
-          <span className="bg-secondary/50 px-1.5 py-0.5 rounded">MCP 0</span>
-          <span className="bg-secondary/50 px-1.5 py-0.5 rounded">Mem 0</span>
+        <div className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded">
+          资源绑定未启用
         </div>
 
         {/* Hover Actions */}

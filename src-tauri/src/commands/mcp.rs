@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use crate::models::mcp::McpServer;
 use crate::db::mcp_repository;
 use crate::scanner::mcp_scanner;
+use crate::security::path_guard::validate_scan_root;
 
 #[command]
 pub async fn list_mcp_servers(pool: State<'_, SqlitePool>) -> Result<Vec<McpServer>, String> {
@@ -23,7 +24,8 @@ pub async fn delete_mcp_server(id: String, pool: State<'_, SqlitePool>) -> Resul
 
 #[command]
 pub async fn scan_mcp_dir(path: String, pool: State<'_, SqlitePool>) -> Result<usize, String> {
-    let new_servers = mcp_scanner::scan_mcp_in_dir(&path);
+    let safe_path = validate_scan_root(&path)?;
+    let new_servers = mcp_scanner::scan_mcp_in_dir(safe_path.to_string_lossy().as_ref());
     let count = new_servers.len();
     
     for server in new_servers {

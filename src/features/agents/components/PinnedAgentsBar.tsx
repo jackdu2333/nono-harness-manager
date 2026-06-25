@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Agent } from '../types';
 import { Play, GripVertical } from 'lucide-react';
 import { getAgentBrandStyles } from '../utils/brandStyles';
+import { isAgentLaunchable } from '../utils/launchability';
 import { useAgentsStore } from '../store';
 import {
   DndContext,
@@ -35,7 +36,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
   const launchAgent = useAgentsStore(s => s.launchAgent);
   const brand = getAgentBrandStyles(agent.name, agent.type);
   const Icon = brand.Icon;
-  const isLaunchable = !!agent.app_path || !!agent.launch_command;
+  const isLaunchable = isAgentLaunchable(agent);
   
   const {
     attributes,

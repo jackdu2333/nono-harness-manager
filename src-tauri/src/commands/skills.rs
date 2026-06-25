@@ -2,6 +2,7 @@ use crate::models::source::SkillSource;
 use crate::models::skill::Skill;
 use crate::db::repositories::{source_repository, skill_repository};
 use crate::scanner::skill_scanner::scan_directory;
+use crate::security::path_guard::validate_scan_root;
 use sqlx::SqlitePool;
 use tauri::{State, command};
 use uuid::Uuid;
@@ -22,27 +23,9 @@ pub async fn add_skill_source(
 ) -> Result<SkillSource, String> {
     let now = Utc::now().to_rfc3339();
     
-    // Expand ~ to home directory
-    let expanded_path = if path.starts_with("~/") {
-        if let Some(mut home) = dirs::home_dir() {
-            home.push(&path[2..]);
-            home.to_string_lossy().to_string()
-        } else {
-            path
-        }
-    } else {
-        path
-    };
-
-    // Safety Path Guard
-    let home_dir_str = dirs::home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-    if expanded_path == "/" 
-        || expanded_path == home_dir_str 
-        || expanded_path.contains("/.ssh") 
-        || expanded_path.contains("/.gnupg") 
-    {
-        return Err("Security Error: Scanning this directory is prohibited.".to_string());
-    }
+    let expanded_path = validate_scan_root(&path)?
+        .to_string_lossy()
+        .to_string();
 
     // Check if a source with this path already exists
     let existing_sources = source_repository::list_sources(&*pool).await.map_err(|e| e.to_string())?;
@@ -86,6 +69,7 @@ pub async fn scan_skill_source(id: String, pool: State<'_, SqlitePool>) -> Resul
         log::error!("Source not found: {}", id);
         "Source not found".to_string()
     })?;
+    validate_scan_root(&source.path)?;
     
     log::info!("Found source to scan: {:?}", source);
     let skills = scan_directory(&source);

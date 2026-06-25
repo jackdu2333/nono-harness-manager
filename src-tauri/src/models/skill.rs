@@ -15,6 +15,12 @@ pub struct Skill {
     pub description_confidence: Option<String>,
     pub description_updated_at: Option<String>,
     pub description_is_manual: Option<i64>,
+    pub summary: Option<String>,
+    pub tags: Option<String>,
+    pub confidence: Option<String>,
+    pub evidence_files: Option<String>,
+    pub manual_override: Option<i64>,
+    pub last_analyzed_at: Option<String>,
     pub status: String,
     pub entry_file: Option<String>,
     pub metadata_path: Option<String>,
@@ -25,10 +31,4 @@ pub struct Skill {
     pub last_modified_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
-pub struct SkillTag {
-    pub skill_id: String,
-    pub tag: String,
 }

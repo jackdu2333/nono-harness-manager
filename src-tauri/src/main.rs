@@ -5,6 +5,7 @@ mod commands;
 mod db;
 mod models;
 mod scanner;
+mod security;
 
 use tauri::Manager;
 
@@ -19,12 +20,14 @@ fn main() {
                     Ok(pool) => {
                         handle.manage(pool);
                         log::info!("Database initialized successfully");
+                        Ok(())
                     }
                     Err(e) => {
                         log::error!("Failed to initialize database: {}", e);
+                        Err(e)
                     }
                 }
-            });
+            })?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -48,6 +51,11 @@ fn main() {
             commands::mcp::delete_mcp_server,
             commands::mcp::scan_mcp_dir,
             commands::mcp::discover_system_mcp,
+            commands::harness_api::list_harness_resources,
+            commands::harness_api::get_harness_resource_context,
+            commands::harness_api::create_intelligence_proposal,
+            commands::harness_api::list_intelligence_proposals,
+            commands::harness_api::apply_intelligence_proposal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

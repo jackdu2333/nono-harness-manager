@@ -70,9 +70,7 @@ export function MCPServerListItem({ server, isSelected, onSelect }: Props) {
               {server.command.split('/').pop()}
             </span>
             <span className="shrink-0">•</span>
-            <span className="shrink-0">Tools 0</span>
-            <span className="shrink-0">•</span>
-            <span className="shrink-0">Resources 0</span>
+            <span className="shrink-0">能力未解析</span>
             <span className="shrink-0 ml-auto hidden sm:block">
               {new Date(server.updated_at).toLocaleDateString()}
             </span>

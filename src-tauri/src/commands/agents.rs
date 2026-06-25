@@ -1,6 +1,7 @@
 use crate::models::agent::Agent;
 use crate::db::repositories::agent_repository;
 use crate::scanner::agent_scanner::scan_agents_in_dir as scan_logic;
+use crate::security::path_guard::validate_scan_root;
 use sqlx::SqlitePool;
 use tauri::{State, command};
 use uuid::Uuid;
@@ -48,7 +49,8 @@ pub async fn delete_agent(id: String, pool: State<'_, SqlitePool>) -> Result<(),
 
 #[command]
 pub async fn scan_agents_in_dir(path: String, pool: State<'_, SqlitePool>) -> Result<usize, String> {
-    let new_agents = scan_logic(&path);
+    let safe_path = validate_scan_root(&path)?;
+    let new_agents = scan_logic(safe_path.to_string_lossy().as_ref());
     let count = new_agents.len();
     
     for agent in new_agents {
@@ -90,39 +92,75 @@ pub async fn launch_agent(id: String, pool: State<'_, SqlitePool>) -> Result<(),
     // Find agent
     let agents = agent_repository::list_agents(&*pool).await.map_err(|e| e.to_string())?;
     let agent = agents.into_iter().find(|a| a.id == id).ok_or("Agent not found")?;
-    
-    // Prefer safe open via app_path
-    if let Some(app_path) = &agent.app_path {
-        if app_path.ends_with(".app") || std::path::Path::new(app_path).exists() {
-            std::process::Command::new("open")
-                .arg(app_path)
-                .spawn()
-                .map_err(|e| format!("Failed to launch agent: {}", e))?;
-            return Ok(());
-        }
+
+    if !is_directly_launchable(agent.r#type.as_deref(), agent.app_path.as_deref(), agent.launch_command.as_deref()) {
+        return Err("该 Agent 第一阶段不可安全启动，请配置为 macOS App 后再启动".to_string());
     }
-    
-    if let Some(cmd) = agent.launch_command {
-        // Safe whitelist approach: Only allow 'open'
-        let parts: Vec<&str> = cmd.split_whitespace().collect();
-        if parts.is_empty() {
-            return Err("Empty launch command".to_string());
-        }
-        
-        let program = parts[0];
-        if program == "open" {
-            std::process::Command::new("open")
-                .args(&parts[1..])
-                .spawn()
-                .map_err(|e| format!("Failed to launch agent: {}", e))?;
-        } else {
-            return Err("Security Error: Arbitrary shell commands are blocked. Only 'open' is allowed.".to_string());
-        }
+
+    if let Some(app_path) = agent.app_path.as_deref().filter(|p| p.ends_with(".app")) {
+        std::process::Command::new("open")
+            .arg(app_path)
+            .spawn()
+            .map_err(|e| format!("Failed to launch agent: {}", e))?;
+    } else if let Some(app_name) = parse_open_app_command(agent.launch_command.as_deref()) {
+        std::process::Command::new("open")
+            .arg("-a")
+            .arg(app_name)
+            .spawn()
+            .map_err(|e| format!("Failed to launch agent: {}", e))?;
     } else {
-        return Err("No launch command or app_path configured for this agent".to_string());
+        return Err("缺少可安全执行的启动方式".to_string());
     }
-    
+
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        UPDATE agents
+        SET launch_count = launch_count + 1, last_launched_at = ?, updated_at = ?
+        WHERE id = ?
+        "#
+    )
+    .bind(&now)
+    .bind(&now)
+    .bind(&agent.id)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO resource_usage_events
+          (id, resource_type, resource_id, agent_id, action, source, metadata, created_at)
+        VALUES (?, 'agent', ?, ?, 'launch', 'agents_page', NULL, ?)
+        "#
+    )
+    .bind(Uuid::new_v4().to_string())
+    .bind(&agent.id)
+    .bind(&agent.id)
+    .bind(&now)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
     Ok(())
+}
+
+fn is_directly_launchable(agent_type: Option<&str>, app_path: Option<&str>, launch_command: Option<&str>) -> bool {
+    if matches!(agent_type, Some("CLI") | Some("IDE Plugin")) {
+        return false;
+    }
+
+    app_path.is_some_and(|path| path.ends_with(".app"))
+        || parse_open_app_command(launch_command).is_some()
+}
+
+fn parse_open_app_command(command: Option<&str>) -> Option<String> {
+    let command = command?.trim();
+    let app_name = command.strip_prefix("open -a ")?.trim();
+    if app_name.is_empty() || app_name.contains([';', '&', '|', '`', '$', '>', '<']) {
+        return None;
+    }
+    Some(app_name.trim_matches('"').to_string())
 }
 
 #[command]
@@ -147,4 +185,16 @@ pub async fn open_config_dir(id: String, pool: State<'_, SqlitePool>) -> Result<
     }
     
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_and_ide_plugin_agents_are_not_directly_launchable() {
+        assert!(!is_directly_launchable(Some("CLI"), Some("/Users/jackdu/.codex"), None));
+        assert!(!is_directly_launchable(Some("IDE Plugin"), Some("/Applications/Cursor.app"), Some("open -a Cursor")));
+        assert!(is_directly_launchable(Some("App"), Some("/Applications/Cursor.app"), Some("open -a Cursor")));
+    }
 }

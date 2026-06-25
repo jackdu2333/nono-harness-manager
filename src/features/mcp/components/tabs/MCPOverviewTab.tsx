@@ -1,6 +1,5 @@
-import React from 'react';
 import { McpServer } from '@/features/mcp/types';
-import { Terminal, Database, Code2, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export function MCPOverviewTab({ server }: { server: McpServer }) {
@@ -28,22 +27,8 @@ export function MCPOverviewTab({ server }: { server: McpServer }) {
 
       <section>
         <h3 className="text-sm font-semibold text-foreground mb-3">{t('mcp.capabilities', 'Capabilities')}</h3>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 rounded-lg border border-border/50 text-sm">
-            <Terminal className="w-4 h-4 text-blue-500" />
-            <span className="text-muted-foreground">Tools</span>
-            <span className="font-semibold text-foreground ml-auto">0</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 rounded-lg border border-border/50 text-sm">
-            <Database className="w-4 h-4 text-emerald-500" />
-            <span className="text-muted-foreground">Resources</span>
-            <span className="font-semibold text-foreground ml-auto">0</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 rounded-lg border border-border/50 text-sm">
-            <Code2 className="w-4 h-4 text-purple-500" />
-            <span className="text-muted-foreground">Prompts</span>
-            <span className="font-semibold text-foreground ml-auto">0</span>
-          </div>
+        <div className="p-4 bg-secondary/20 rounded-lg border border-dashed border-border/50 text-sm text-muted-foreground">
+          Tools、Resources 和 Prompts 尚未解析；当前仅展示 MCP Server 配置台账。
         </div>
       </section>
 
