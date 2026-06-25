@@ -5,6 +5,13 @@ use std::env;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
+#[allow(dead_code)]
+#[path = "../models/mod.rs"]
+mod models;
+#[allow(dead_code)]
+#[path = "../trust_policy.rs"]
+mod trust_policy;
+
 const SAFE_CONTEXT_MAX_CHARS: usize = 2048;
 const SAFE_CONTEXT_FILES: &[&str] = &[
     "README.md",
@@ -14,15 +21,6 @@ const SAFE_CONTEXT_FILES: &[&str] = &[
     "skill.yaml",
     "skill.json",
 ];
-const PROPOSAL_ALLOWED_FIELDS: &[&str] = &[
-    "description",
-    "summary",
-    "category",
-    "tags",
-    "confidence",
-    "evidence_files",
-];
-
 #[tokio::main]
 async fn main() {
     if let Err(err) = run().await {
@@ -244,8 +242,8 @@ async fn create_proposal(
     let changes: Value = serde_json::from_str(proposed_changes)
         .map_err(|e| format!("proposed_changes must be JSON: {}", e))?;
     validate_resource_type(resource_type)?;
-    validate_proposed_changes(&changes)?;
-    if !resource_exists(pool, resource_type, resource_id).await? {
+    trust_policy::ensure_json_object(&changes)?;
+    if !trust_policy::resource_exists(pool, resource_type, resource_id).await? {
         return Err("Resource not found".to_string());
     }
 
@@ -269,14 +267,20 @@ async fn create_proposal(
     .await
     .map_err(|e| e.to_string())?;
 
+    let proposal = trust_policy::run_trust_policy_for_proposal(pool, &id).await?;
+
     Ok(json!({
-        "id": id,
-        "resource_type": resource_type,
-        "resource_id": resource_id,
-        "proposal_type": proposal_type,
-        "status": "pending",
-        "created_by": "harness_cli",
-        "created_at": now
+        "id": proposal.id,
+        "resource_type": proposal.resource_type,
+        "resource_id": proposal.resource_id,
+        "proposal_type": proposal.proposal_type,
+        "status": proposal.status,
+        "risk_level": proposal.risk_level,
+        "risk_reasons": proposal.risk_reasons,
+        "auto_applied": proposal.auto_applied,
+        "created_by": proposal.created_by,
+        "created_at": proposal.created_at,
+        "applied_at": proposal.applied_at
     }))
 }
 
@@ -293,44 +297,6 @@ fn validate_resource_type(resource_type: &str) -> Result<(), String> {
     } else {
         Err("Unsupported resource type".to_string())
     }
-}
-
-fn validate_proposed_changes(changes: &Value) -> Result<(), String> {
-    let object = changes
-        .as_object()
-        .ok_or_else(|| "proposed_changes must be a JSON object".to_string())?;
-
-    for key in object.keys() {
-        if !PROPOSAL_ALLOWED_FIELDS.contains(&key.as_str()) {
-            return Err(format!("Unsupported proposed_changes field: {}", key));
-        }
-    }
-
-    Ok(())
-}
-
-async fn resource_exists(
-    pool: &SqlitePool,
-    resource_type: &str,
-    resource_id: &str,
-) -> Result<bool, String> {
-    let query = match resource_type {
-        "skill" => "SELECT COUNT(*) as count FROM skills WHERE id = ?",
-        "mcp_server" => "SELECT COUNT(*) as count FROM mcp_servers WHERE id = ?",
-        "memory_source" => "SELECT COUNT(*) as count FROM memory_sources WHERE id = ?",
-        "knowledge_base" => "SELECT COUNT(*) as count FROM knowledge_bases WHERE id = ?",
-        "project" => "SELECT COUNT(*) as count FROM projects WHERE id = ?",
-        _ => return Err("Unsupported resource type".to_string()),
-    };
-
-    let count: i64 = sqlx::query(query)
-        .bind(resource_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .get("count");
-
-    Ok(count > 0)
 }
 
 struct SafeContentExcerpt {

@@ -6,6 +6,7 @@ mod db;
 mod models;
 mod scanner;
 mod security;
+mod trust_policy;
 
 use tauri::Manager;
 
@@ -56,6 +57,8 @@ fn main() {
             commands::harness_api::create_intelligence_proposal,
             commands::harness_api::list_intelligence_proposals,
             commands::harness_api::apply_intelligence_proposal,
+            commands::harness_api::reject_intelligence_proposal,
+            commands::harness_api::rollback_intelligence_proposal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -36,4 +36,8 @@ pub struct IntelligenceProposal {
     pub created_by: Option<String>,
     pub created_at: String,
     pub applied_at: Option<String>,
+    pub risk_level: Option<String>,
+    pub risk_reasons: Option<String>,
+    pub auto_applied: Option<i64>,
+    pub trust_policy_version: Option<String>,
 }

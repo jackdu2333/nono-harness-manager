@@ -81,7 +81,7 @@ const tools = [
   },
   {
     name: 'harness_create_proposal',
-    description: 'Create a pending intelligence proposal. Does not apply changes.',
+    description: 'Create an intelligence proposal. Harness Core runs local Trust Policy; this tool cannot directly apply changes.',
     inputSchema: {
       type: 'object',
       required: ['resource_type', 'resource_id', 'proposal_type', 'proposed_changes'],
@@ -97,6 +97,7 @@ const tools = [
 
 async function handle(request) {
   const { id, method, params = {} } = request;
+  const hasRequestId = Object.prototype.hasOwnProperty.call(request, 'id');
   try {
     if (method === 'initialize') {
       respond(id, {
@@ -104,6 +105,17 @@ async function handle(request) {
         capabilities: { tools: {} },
         serverInfo: { name: 'nono-harness-manager', version: '0.1.0' },
       });
+      return;
+    }
+
+    if (method === 'notifications/initialized') {
+      return;
+    }
+
+    if (method === 'ping') {
+      if (hasRequestId) {
+        respond(id, {});
+      }
       return;
     }
 
@@ -134,9 +146,13 @@ async function handle(request) {
       return;
     }
 
-    respond(id, {});
+    if (hasRequestId) {
+      respond(id, {});
+    }
   } catch (error) {
-    fail(id, error);
+    if (hasRequestId) {
+      fail(id, error);
+    }
   }
 }
 

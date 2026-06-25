@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { LayoutDashboard, Settings, Layers, Box, Cpu, Database, Activity, FileCode2 } from "lucide-react";
+import { LayoutDashboard, Settings, Layers, Box, Cpu, Database, Activity, FileCode2, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "../features/theme/ThemeToggle";
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { icon: Cpu, label: "Agents", path: "/agents" },
   { icon: Layers, label: "Skills", path: "/skills" },
   { icon: Box, label: "MCP", path: "/mcp" },
+  { icon: ShieldCheck, label: "Proposals", path: "/proposals" },
   { icon: Database, label: "Memory", path: "/memory" },
   { icon: FileCode2, label: "Knowledge", path: "/knowledge" },
   { icon: Activity, label: "Projects", path: "/projects" },

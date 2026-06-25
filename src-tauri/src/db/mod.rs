@@ -99,5 +99,41 @@ mod tests {
             .expect("table lookup should succeed");
             assert_eq!(exists.0, 1, "{table} should exist");
         }
+
+        let proposal_columns = sqlx::query("PRAGMA table_info(intelligence_proposals)")
+            .fetch_all(&pool)
+            .await
+            .expect("intelligence_proposals columns should be readable")
+            .into_iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect::<Vec<_>>();
+
+        for column in [
+            "risk_level",
+            "risk_reasons",
+            "auto_applied",
+            "trust_policy_version",
+        ] {
+            assert!(
+                proposal_columns.iter().any(|name| name == column),
+                "{column} should exist on intelligence_proposals"
+            );
+        }
+
+        for key in [
+            "auto_apply_low_risk",
+            "require_evidence_files",
+            "allowed_auto_apply_resource_types",
+            "allowed_auto_apply_fields",
+            "min_confidence_for_auto_apply",
+            "max_auto_apply_batch_size",
+        ] {
+            let exists: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM settings WHERE key = ?")
+                .bind(key)
+                .fetch_one(&pool)
+                .await
+                .expect("trust policy setting lookup should succeed");
+            assert_eq!(exists.0, 1, "{key} setting should exist");
+        }
     }
 }

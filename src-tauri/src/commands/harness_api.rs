@@ -1,6 +1,7 @@
 use crate::models::intelligence::{
     HarnessResourceContext, HarnessResourceSummary, IntelligenceProposal,
 };
+use crate::trust_policy;
 use chrono::Utc;
 use serde_json::{json, Value};
 use sqlx::{Row, SqlitePool};
@@ -126,9 +127,9 @@ pub async fn create_intelligence_proposal(
 
     let changes: Value = serde_json::from_str(&proposed_changes)
         .map_err(|e| format!("Invalid proposed_changes JSON: {}", e))?;
-    validate_proposed_changes(&changes)?;
+    trust_policy::ensure_json_object(&changes)?;
 
-    if !resource_exists(&resource_type, &resource_id, &pool).await? {
+    if !trust_policy::resource_exists(&pool, &resource_type, &resource_id).await? {
         return Err("Resource not found".to_string());
     }
 
@@ -144,6 +145,10 @@ pub async fn create_intelligence_proposal(
         created_by,
         created_at: Utc::now().to_rfc3339(),
         applied_at: None,
+        risk_level: None,
+        risk_reasons: None,
+        auto_applied: Some(0),
+        trust_policy_version: None,
     };
 
     sqlx::query(
@@ -169,7 +174,7 @@ pub async fn create_intelligence_proposal(
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(proposal)
+    trust_policy::run_trust_policy_for_proposal(&pool, &proposal.id).await
 }
 
 #[command]
@@ -201,66 +206,28 @@ pub async fn apply_intelligence_proposal(
     actor: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let proposal = sqlx::query_as::<_, IntelligenceProposal>(
-        "SELECT * FROM intelligence_proposals WHERE id = ?",
-    )
-    .bind(&proposal_id)
-    .fetch_one(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    if proposal.status.as_deref() != Some("pending") {
-        return Err("Only pending proposals can be applied".to_string());
-    }
-
-    let changes: Value = serde_json::from_str(&proposal.proposed_changes)
-        .map_err(|e| format!("Invalid proposed_changes JSON: {}", e))?;
-    validate_proposed_changes(&changes)?;
-    let now = Utc::now().to_rfc3339();
     let actor = actor.unwrap_or_else(|| "user".to_string());
-    let before_state =
-        get_resource_snapshot(&proposal.resource_type, &proposal.resource_id, &pool).await?;
+    trust_policy::apply_proposal(&pool, &proposal_id, &actor, false).await
+}
 
-    match proposal.resource_type.as_str() {
-        "skill" => apply_skill_changes(&proposal.resource_id, &changes, &now, &pool).await?,
-        "mcp_server" => apply_mcp_changes(&proposal.resource_id, &changes, &now, &pool).await?,
-        _ => {
-            return Err("Apply is only enabled for skill and mcp_server in this phase".to_string())
-        }
-    }
+#[command]
+pub async fn reject_intelligence_proposal(
+    proposal_id: String,
+    actor: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    let actor = actor.unwrap_or_else(|| "user".to_string());
+    trust_policy::reject_proposal(&pool, &proposal_id, &actor).await
+}
 
-    let after_state =
-        get_resource_snapshot(&proposal.resource_type, &proposal.resource_id, &pool).await?;
-
-    sqlx::query(
-        "UPDATE intelligence_proposals SET status = 'applied', applied_at = ? WHERE id = ?",
-    )
-    .bind(&now)
-    .bind(&proposal.id)
-    .execute(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    sqlx::query(
-        r#"
-        INSERT INTO audit_logs
-          (id, actor, action, resource_type, resource_id, proposal_id, before_state, after_state, created_at)
-        VALUES (?, ?, 'apply_intelligence_proposal', ?, ?, ?, ?, ?, ?)
-        "#
-    )
-    .bind(Uuid::new_v4().to_string())
-    .bind(actor)
-    .bind(&proposal.resource_type)
-    .bind(&proposal.resource_id)
-    .bind(&proposal.id)
-    .bind(before_state.to_string())
-    .bind(after_state.to_string())
-    .bind(&now)
-    .execute(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
+#[command]
+pub async fn rollback_intelligence_proposal(
+    proposal_id: String,
+    actor: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    let actor = actor.unwrap_or_else(|| "user".to_string());
+    trust_policy::rollback_proposal(&pool, &proposal_id, &actor).await
 }
 
 async fn get_skill_context(
@@ -354,78 +321,6 @@ async fn get_mcp_context(
     })
 }
 
-async fn apply_skill_changes(
-    resource_id: &str,
-    changes: &Value,
-    now: &str,
-    pool: &SqlitePool,
-) -> Result<(), String> {
-    sqlx::query(
-        r#"
-        UPDATE skills
-        SET description = COALESCE(?, description),
-            summary = COALESCE(?, summary),
-            category = COALESCE(?, category),
-            tags = COALESCE(?, tags),
-            confidence = COALESCE(?, confidence),
-            evidence_files = COALESCE(?, evidence_files),
-            manual_override = 0,
-            last_analyzed_at = ?,
-            updated_at = ?
-        WHERE id = ?
-        "#,
-    )
-    .bind(changes.get("description").and_then(Value::as_str))
-    .bind(changes.get("summary").and_then(Value::as_str))
-    .bind(changes.get("category").and_then(Value::as_str))
-    .bind(changes.get("tags").map(Value::to_string))
-    .bind(changes.get("confidence").and_then(Value::as_str))
-    .bind(changes.get("evidence_files").map(Value::to_string))
-    .bind(now)
-    .bind(now)
-    .bind(resource_id)
-    .execute(pool)
-    .await
-    .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-async fn apply_mcp_changes(
-    resource_id: &str,
-    changes: &Value,
-    now: &str,
-    pool: &SqlitePool,
-) -> Result<(), String> {
-    sqlx::query(
-        r#"
-        UPDATE mcp_servers
-        SET description = COALESCE(?, description),
-            summary = COALESCE(?, summary),
-            category = COALESCE(?, category),
-            tags = COALESCE(?, tags),
-            confidence = COALESCE(?, confidence),
-            evidence_files = COALESCE(?, evidence_files),
-            manual_override = 0,
-            last_analyzed_at = ?,
-            updated_at = ?
-        WHERE id = ?
-        "#,
-    )
-    .bind(changes.get("description").and_then(Value::as_str))
-    .bind(changes.get("summary").and_then(Value::as_str))
-    .bind(changes.get("category").and_then(Value::as_str))
-    .bind(changes.get("tags").map(Value::to_string))
-    .bind(changes.get("confidence").and_then(Value::as_str))
-    .bind(changes.get("evidence_files").map(Value::to_string))
-    .bind(now)
-    .bind(now)
-    .bind(resource_id)
-    .execute(pool)
-    .await
-    .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 fn validate_proposed_changes(changes: &Value) -> Result<(), String> {
     let object = changes
         .as_object()
@@ -438,75 +333,6 @@ fn validate_proposed_changes(changes: &Value) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-async fn resource_exists(
-    resource_type: &str,
-    resource_id: &str,
-    pool: &SqlitePool,
-) -> Result<bool, String> {
-    let query = match resource_type {
-        "skill" => "SELECT COUNT(*) as count FROM skills WHERE id = ?",
-        "mcp_server" => "SELECT COUNT(*) as count FROM mcp_servers WHERE id = ?",
-        "memory_source" => "SELECT COUNT(*) as count FROM memory_sources WHERE id = ?",
-        "knowledge_base" => "SELECT COUNT(*) as count FROM knowledge_bases WHERE id = ?",
-        "project" => "SELECT COUNT(*) as count FROM projects WHERE id = ?",
-        _ => return Err("Unsupported resource type".to_string()),
-    };
-
-    let count: i64 = sqlx::query(query)
-        .bind(resource_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .get("count");
-
-    Ok(count > 0)
-}
-
-async fn get_resource_snapshot(
-    resource_type: &str,
-    resource_id: &str,
-    pool: &SqlitePool,
-) -> Result<Value, String> {
-    let query = match resource_type {
-        "skill" => {
-            r#"
-            SELECT description, summary, category, tags, confidence, evidence_files,
-                   manual_override, last_analyzed_at
-            FROM skills WHERE id = ?
-            "#
-        }
-        "mcp_server" => {
-            r#"
-            SELECT description, summary, category, tags, confidence, evidence_files,
-                   manual_override, last_analyzed_at
-            FROM mcp_servers WHERE id = ?
-            "#
-        }
-        _ => {
-            return Err(
-                "Snapshots are only enabled for skill and mcp_server in this phase".to_string(),
-            )
-        }
-    };
-
-    let row = sqlx::query(query)
-        .bind(resource_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(json!({
-        "description": row.get::<Option<String>, _>("description"),
-        "summary": row.get::<Option<String>, _>("summary"),
-        "category": row.get::<Option<String>, _>("category"),
-        "tags": row.get::<Option<String>, _>("tags"),
-        "confidence": row.get::<Option<String>, _>("confidence"),
-        "evidence_files": row.get::<Option<String>, _>("evidence_files"),
-        "manual_override": row.get::<Option<i64>, _>("manual_override"),
-        "last_analyzed_at": row.get::<Option<String>, _>("last_analyzed_at"),
-    }))
 }
 
 struct SafeContentExcerpt {
@@ -563,6 +389,7 @@ fn is_safe_excerpt_file(skill_dir: &Path, candidate: &PathBuf) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trust_policy::{assess_proposal_risk, RiskLevel, TrustPolicySettings};
     use serde_json::json;
 
     #[test]
@@ -587,5 +414,68 @@ mod tests {
         });
 
         assert!(validate_proposed_changes(&changes).is_ok());
+    }
+
+    #[test]
+    fn trust_policy_marks_low_risk_metadata_update_auto_applyable() {
+        let changes = json!({
+            "description": "中文简介",
+            "summary": "摘要",
+            "category": "开发测试",
+            "tags": ["mcp", "codex"],
+            "confidence": "medium",
+            "evidence_files": ["SKILL.md"]
+        });
+
+        let decision = assess_proposal_risk(
+            "skill",
+            "ai_metadata_update",
+            &changes,
+            true,
+            &TrustPolicySettings::default(),
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::Low);
+        assert!(decision.can_auto_apply);
+    }
+
+    #[test]
+    fn trust_policy_marks_missing_evidence_as_medium_risk() {
+        let changes = json!({
+            "description": "中文简介",
+            "confidence": "high"
+        });
+
+        let decision = assess_proposal_risk(
+            "skill",
+            "description_update",
+            &changes,
+            true,
+            &TrustPolicySettings::default(),
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::Medium);
+        assert!(!decision.can_auto_apply);
+    }
+
+    #[test]
+    fn trust_policy_blocks_forbidden_launch_fields() {
+        let changes = json!({
+            "description": "中文简介",
+            "launch_command": "open -a Terminal",
+            "confidence": "high",
+            "evidence_files": ["SKILL.md"]
+        });
+
+        let decision = assess_proposal_risk(
+            "skill",
+            "description_update",
+            &changes,
+            true,
+            &TrustPolicySettings::default(),
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::High);
+        assert!(!decision.can_auto_apply);
     }
 }

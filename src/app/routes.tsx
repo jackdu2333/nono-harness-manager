@@ -4,6 +4,7 @@ import AppShell from "./AppShell";
 import SkillsPage from "../pages/Skills";
 import AgentsPage from "../pages/Agents";
 import SettingsPage from "../pages/Settings";
+import ProposalsPage from "../pages/Proposals";
 
 import McpPage from "../pages/Mcp";
 
@@ -22,6 +23,7 @@ export function AppRoutes() {
         <Route path="agents" element={<AgentsPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="mcp" element={<McpPage />} />
+        <Route path="proposals" element={<ProposalsPage />} />
         <Route path="memory" element={<Placeholder title="Memory" />} />
         <Route path="knowledge" element={<Placeholder title="Knowledge" />} />
         <Route path="projects" element={<Placeholder title="Projects" />} />
