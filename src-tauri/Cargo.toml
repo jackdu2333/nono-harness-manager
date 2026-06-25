@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "nono-harness-manager"  # tauri dev 默认跑主 app,而非 harness_cli
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -35,4 +36,3 @@ uuid = { version = "1.23.4", features = ["v4"] }
 chrono = "0.4.45"
 dirs = "6.0.0"
 pulldown-cmark = "0.13.4"
-

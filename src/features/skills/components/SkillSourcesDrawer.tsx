@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSkillsStore } from '../store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { RefreshCw, Plus, Trash2, FolderOpen, Search, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -10,18 +10,33 @@ export function SkillSourcesDrawer() {
   const { sources, addSource, deleteSource, scanSource, isScanning } = useSkillsStore();
   const [newPath, setNewPath] = useState('');
   const [newName, setNewName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const handleAdd = async () => {
     if (!newPath.trim()) return;
+    setIsAdding(true);
+    setError(null);
+    try {
     const finalName = newName.trim() || newPath.split('/').filter(Boolean).pop() || '自定义资源库';
     await addSource(finalName, newPath.trim(), 'local_dir', 3);
     setNewPath('');
     setNewName('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const handleDiscover = async () => {
+    setError(null);
+    try {
     await addSource('Default Skills', '~/.agents/skills', 'local_dir', 3);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
@@ -39,9 +54,12 @@ export function SkillSourcesDrawer() {
               <FolderOpen className="w-5 h-5 text-muted-foreground" />
               {t('skills.sources_title')}
             </SheetTitle>
+            <SheetDescription className="sr-only">
+              管理技能资源库：添加、扫描或删除目录。
+            </SheetDescription>
           </SheetHeader>
 
-          <Button onClick={handleDiscover} variant="outline" className="w-full justify-center gap-2 border-border/50 text-muted-foreground hover:text-foreground mb-6 bg-card/50 shadow-sm hover:bg-card transition-all">
+          <Button onClick={handleDiscover} variant="outline" disabled={isAdding} className="w-full justify-center gap-2 border-border/50 text-muted-foreground hover:text-foreground mb-6 bg-card/50 shadow-sm hover:bg-card transition-all">
             <Search className="w-4 h-4" /> {t('skills.discover_default')}
           </Button>
 
@@ -61,11 +79,16 @@ export function SkillSourcesDrawer() {
                 onChange={(e) => setNewPath(e.target.value)}
                 className="bg-card/50 border-border/50 text-foreground flex-1 min-w-0 shadow-inner transition-colors focus:bg-card"
               />
-              <Button onClick={handleAdd} variant="secondary" className="gap-2 shrink-0 shadow-sm">
+              <Button onClick={handleAdd} variant="secondary" disabled={isAdding || !newPath.trim()} className="gap-2 shrink-0 shadow-sm">
                 <Plus className="w-4 h-4" /> {t('skills.add_source')}
               </Button>
             </div>
           </div>
+          {error && (
+            <div className="mt-4 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
         </div>
         
         <div className="flex-1 overflow-auto p-6 space-y-3 bg-background/50">
@@ -87,7 +110,7 @@ export function SkillSourcesDrawer() {
                     variant="outline" 
                     className="h-8 w-8 border-border/50 text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background shadow-sm transition-all"
                     onClick={() => scanSource(source.id)}
-                    disabled={isScanning}
+                    disabled={isScanning || isAdding}
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
                   </Button>
