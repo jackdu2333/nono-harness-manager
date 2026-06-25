@@ -134,3 +134,226 @@ pub async fn update_skill_description(
 
     Ok(())
 }
+
+// ===== Curation & lifecycle commands (migration 0007) =====
+// 需求 §四/§五/§六：状态体系 + 整理动作 + 进化字段
+
+#[command]
+pub async fn set_skill_category(
+    skill_id: String,
+    category: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET category = ?, updated_at = ? WHERE id = ?")
+        .bind(&category)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Lifecycle status — single-choice among draft/active/deprecated/broken.
+/// favorite/review/improvement/archived/duplicate are orthogonal tags handled
+/// by their own commands below (§四).
+#[command]
+pub async fn set_skill_status(
+    skill_id: String,
+    status: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    const ALLOWED: &[&str] = &["draft", "active", "deprecated", "broken"];
+    if !ALLOWED.contains(&status.as_str()) {
+        return Err(format!("invalid lifecycle status: {}", status));
+    }
+    sqlx::query("UPDATE skills SET status = ?, updated_at = ? WHERE id = ?")
+        .bind(&status)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+pub async fn toggle_favorite(
+    skill_id: String,
+    value: bool,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET is_favorite = ?, updated_at = ? WHERE id = ?")
+        .bind(value as i64)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+pub async fn toggle_needs_review(
+    skill_id: String,
+    value: bool,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET needs_review = ?, updated_at = ? WHERE id = ?")
+        .bind(value as i64)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+pub async fn toggle_needs_improvement(
+    skill_id: String,
+    value: bool,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET needs_improvement = ?, updated_at = ? WHERE id = ?")
+        .bind(value as i64)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+pub async fn archive_skill(
+    skill_id: String,
+    archived: bool,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET is_archived = ?, updated_at = ? WHERE id = ?")
+        .bind(archived as i64)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Remove a skill from the Harness index only. NEVER touches the local file.
+/// 需求 §五 / 验收 7：删索引不删本地文件
+#[command]
+pub async fn delete_skill_index(
+    skill_id: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("DELETE FROM skills WHERE id = ?")
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Improvement note + status (e.g. planned / in_progress / done) + last-improved timestamp.
+/// 需求 §六
+#[command]
+pub async fn update_improvement_note(
+    skill_id: String,
+    note: Option<String>,
+    status: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE skills SET improvement_note = ?, improvement_status = ?, last_improved_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&note)
+    .bind(&status)
+    .bind(&now)
+    .bind(&now)
+    .bind(&skill_id)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+pub async fn update_review_note(
+    skill_id: String,
+    note: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE skills SET review_note = ?, reviewed_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&note)
+    .bind(&now)
+    .bind(&now)
+    .bind(&skill_id)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Persist a duplicate-group id computed by the frontend detector.
+/// 需求 §七：只标记"疑似重复"，不自动合并。
+#[command]
+pub async fn mark_duplicate(
+    skill_id: String,
+    group_id: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    sqlx::query("UPDATE skills SET duplicate_group_id = ?, updated_at = ? WHERE id = ?")
+        .bind(&group_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Record a Harness-panel action against a skill (open detail / copy path /
+/// edit description / set status / archive ...). Source is pinned to
+/// "harness_panel" — this is a panel-operation count, NOT a Codex invocation
+/// count. 需求 §八 / 验收 8.
+#[command]
+pub async fn record_skill_usage(
+    skill_id: String,
+    action: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO resource_usage_events
+            (id, resource_type, resource_id, action, source, created_at)
+        VALUES (?, 'skill', ?, ?, 'harness_panel', ?)
+        "#,
+    )
+    .bind(Uuid::new_v4().to_string())
+    .bind(&skill_id)
+    .bind(&action)
+    .bind(&now)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Keep skills.total_usage_count in sync as the panel-action counter.
+    sqlx::query(
+        "UPDATE skills SET total_usage_count = total_usage_count + 1, last_used_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&now)
+    .bind(&now)
+    .bind(&skill_id)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}

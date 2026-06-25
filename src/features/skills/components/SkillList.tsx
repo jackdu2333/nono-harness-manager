@@ -12,14 +12,14 @@ import { useTranslation } from 'react-i18next';
 
 const columnHelper = createColumnHelper<Skill>();
 
-export function SkillList({ 
-  onSelectSkill, 
-  globalFilter 
-}: { 
+export function SkillList({
+  onSelectSkill,
+  globalFilter
+}: {
   onSelectSkill: (skill: Skill) => void;
   globalFilter: string;
 }) {
-  const { skills, fetchSkills } = useSkillsStore();
+  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons } = useSkillsStore();
   const { t } = useTranslation();
 
   const columns = useMemo(() => [
@@ -27,9 +27,29 @@ export function SkillList({
       header: t('skills.name'),
       cell: info => {
         const skill = info.row.original;
+        const dupReason = duplicateReasons[skill.id];
         return (
           <div className="py-1">
-            <div className="font-medium text-foreground text-base">{skill.name}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-foreground text-base">{skill.name}</span>
+              {skill.is_favorite === 1 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">常用</span>
+              )}
+              {skill.needs_review === 1 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">待整理</span>
+              )}
+              {skill.needs_improvement === 1 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">待进化</span>
+              )}
+              {duplicateAssignment[skill.id] && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                  title={dupReason?.join('、')}
+                >
+                  疑似重复
+                </span>
+              )}
+            </div>
             {skill.description ? (
               <div className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                 {skill.description}
@@ -57,14 +77,30 @@ export function SkillList({
         return <span className="text-xs text-muted-foreground/80">{val ? new Date(val).toLocaleDateString() : '-'}</span>;
       },
     }),
-  ], [t]);
+  ], [t, duplicateAssignment, duplicateReasons]);
 
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
 
+  // Each "view" is just a filtered list — not a separate dashboard. §三
+  const viewFiltered = useMemo(() => {
+    const active = skills.filter((s) => s.is_archived === 0);
+    switch (currentView) {
+      case 'favorites': return active.filter((s) => s.is_favorite === 1);
+      case 'missing_description': return active.filter((s) => !s.description);
+      case 'uncategorized': return active.filter((s) => !s.category);
+      case 'needs_review': return active.filter((s) => s.needs_review === 1);
+      case 'needs_improvement': return active.filter((s) => s.needs_improvement === 1);
+      case 'duplicates': return active.filter((s) => !!duplicateAssignment[s.id]);
+      case 'archived': return skills.filter((s) => s.is_archived === 1);
+      case 'all':
+      default: return active;
+    }
+  }, [skills, currentView, duplicateAssignment]);
+
   const table = useReactTable({
-    data: skills,
+    data: viewFiltered,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -84,9 +120,9 @@ export function SkillList({
                   {header.isPlaceholder
                     ? null
                     : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
                 </th>
               ))}
             </tr>
@@ -94,8 +130,8 @@ export function SkillList({
         </thead>
         <tbody>
           {table.getRowModel().rows.map(row => (
-            <tr 
-              key={row.id} 
+            <tr
+              key={row.id}
               className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
               onClick={() => onSelectSkill(row.original)}
             >

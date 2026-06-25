@@ -29,6 +29,18 @@ pub struct Skill {
     pub total_usage_count: i64,
     pub last_used_at: Option<String>,
     pub last_modified_at: Option<String>,
+    // Curation lifecycle flags (orthogonal to `status`). Migration 0007.
+    pub is_favorite: i64,
+    pub is_archived: i64,
+    pub needs_review: i64,
+    pub needs_improvement: i64,
+    pub duplicate_group_id: Option<String>,
+    // Improvement / review tracking notes. Migration 0007.
+    pub improvement_note: Option<String>,
+    pub improvement_status: Option<String>,
+    pub last_improved_at: Option<String>,
+    pub review_note: Option<String>,
+    pub reviewed_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

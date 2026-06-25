@@ -39,4 +39,27 @@ export interface Skill {
   last_modified_at: string | null;
   created_at: string;
   updated_at: string;
+  // Curation lifecycle flags (migration 0007) — orthogonal tags
+  is_favorite: number;
+  needs_review: number;
+  needs_improvement: number;
+  is_archived: number;
+  duplicate_group_id: string | null;
+  // Evolution tracking (§六)
+  improvement_note: string | null;
+  improvement_status: string | null;
+  last_improved_at: string | null;
+  review_note: string | null;
+  reviewed_at: string | null;
 }
+
+/** Secondary views on the Skills page — each is a filtered list, not a dashboard. §三 */
+export type SkillView =
+  | 'all'
+  | 'favorites'
+  | 'needs_review'
+  | 'needs_improvement'
+  | 'uncategorized'
+  | 'missing_description'
+  | 'duplicates'
+  | 'archived';
