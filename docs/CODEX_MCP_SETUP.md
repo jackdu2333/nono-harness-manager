@@ -238,3 +238,9 @@ HARNESS_CLI_BIN = "/absolute/path/to/harness_cli"
 ### proposed_changes 字段被拒绝
 
 说明 AI 试图写入非治理字段，例如 `launch_command`、`path`、`command`。这些字段不允许通过 proposal 修改。
+
+### MCP proposal 总是进入 pending_review
+
+Trust Policy 要求 `evidence_files` 能在本机资源上下文中验证。对于 MCP，如果 `source_path` 指向配置文件，Codex 应将 `evidence_files` 设为该文件名（如 `"mcp.json"`）或完整 `source_path`；如果 `source_path` 是目录（例如 package 扫描出来的 MCP），验证会失败，proposal 会被降级为 medium。
+
+建议 Codex 在创建 MCP proposal 时，先调用 `harness_get_resource_context` 获取 `source_path`，并尽量用它对应的文件名作为 `evidence_files`。

@@ -149,6 +149,7 @@ pub async fn create_intelligence_proposal(
         risk_reasons: None,
         auto_applied: Some(0),
         trust_policy_version: None,
+        resource_name: None,
     };
 
     sqlx::query(
@@ -195,9 +196,84 @@ pub async fn list_intelligence_proposals(
         )
         .fetch_all(&*pool)
         .await
+    }
+    .map_err(|e| e.to_string())?;
+
+    enrich_proposals_with_resource_names(&pool, proposals).await
+}
+
+async fn enrich_proposals_with_resource_names(
+    pool: &SqlitePool,
+    mut proposals: Vec<IntelligenceProposal>,
+) -> Result<Vec<IntelligenceProposal>, String> {
+    let skill_ids = collect_ids(&proposals, "skill");
+    let mcp_ids = collect_ids(&proposals, "mcp_server");
+    let mem_ids = collect_ids(&proposals, "memory_source");
+    let kb_ids = collect_ids(&proposals, "knowledge_base");
+    let proj_ids = collect_ids(&proposals, "project");
+
+    let skill_names = fetch_names(pool, "skills", &skill_ids).await?;
+    let mcp_names = fetch_names(pool, "mcp_servers", &mcp_ids).await?;
+    let mem_names = fetch_names(pool, "memory_sources", &mem_ids).await?;
+    let kb_names = fetch_names(pool, "knowledge_bases", &kb_ids).await?;
+    let proj_names = fetch_names(pool, "projects", &proj_ids).await?;
+
+    for proposal in &mut proposals {
+        let names = match proposal.resource_type.as_str() {
+            "skill" => &skill_names,
+            "mcp_server" => &mcp_names,
+            "memory_source" => &mem_names,
+            "knowledge_base" => &kb_names,
+            "project" => &proj_names,
+            _ => continue,
+        };
+        proposal.resource_name = names.get(&proposal.resource_id).cloned();
+    }
+
+    Ok(proposals)
+}
+
+fn collect_ids(proposals: &[IntelligenceProposal], resource_type: &str) -> Vec<String> {
+    proposals
+        .iter()
+        .filter(|p| p.resource_type == resource_type)
+        .map(|p| p.resource_id.clone())
+        .collect()
+}
+
+async fn fetch_names(
+    pool: &SqlitePool,
+    table: &str,
+    ids: &[String],
+) -> Result<std::collections::HashMap<String, String>, String> {
+    if ids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+
+    let validated_table = match table {
+        "skills" | "mcp_servers" | "memory_sources" | "knowledge_bases" | "projects" => table,
+        _ => return Err(format!("Unknown resource table: {table}")),
     };
 
-    proposals.map_err(|e| e.to_string())
+    let mut builder = sqlx::QueryBuilder::<sqlx::Sqlite>::new("SELECT id, name FROM ");
+    builder.push(validated_table);
+    builder.push(" WHERE id IN (");
+    let mut separated = builder.separated(", ");
+    for id in ids {
+        separated.push_bind(id.clone());
+    }
+    builder.push(")");
+
+    let rows = builder
+        .build()
+        .fetch_all(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    let mut map = std::collections::HashMap::new();
+    for row in rows {
+        map.insert(row.get("id"), row.get("name"));
+    }
+    Ok(map)
 }
 
 #[command]

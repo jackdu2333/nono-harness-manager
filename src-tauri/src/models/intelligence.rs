@@ -40,4 +40,6 @@ pub struct IntelligenceProposal {
     pub risk_reasons: Option<String>,
     pub auto_applied: Option<i64>,
     pub trust_policy_version: Option<String>,
+    #[sqlx(default)]
+    pub resource_name: Option<String>,
 }

@@ -23,4 +23,5 @@ export interface IntelligenceProposal {
   risk_reasons?: string | null;
   auto_applied?: number | null;
   trust_policy_version?: string | null;
+  resource_name?: string | null;
 }

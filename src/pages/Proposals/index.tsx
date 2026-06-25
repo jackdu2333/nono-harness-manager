@@ -3,6 +3,14 @@ import type { ReactNode } from 'react';
 import { RotateCcw, ShieldAlert, ShieldCheck, UserCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   applyIntelligenceProposal,
   listIntelligenceProposals,
   rejectIntelligenceProposal,
@@ -85,6 +93,11 @@ export default function ProposalsPage() {
   const [proposals, setProposals] = useState<IntelligenceProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    description: string;
+    action: () => Promise<void>;
+  } | null>(null);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -127,17 +140,25 @@ export default function ProposalsPage() {
   };
 
   const applyAllPending = () =>
-    runAction(async () => {
-      for (const proposal of pendingReview) {
-        await applyIntelligenceProposal(proposal.id);
-      }
+    setConfirmDialog({
+      title: '批量应用',
+      description: `即将应用 ${pendingReview.length} 条 medium-risk proposal，是否继续？`,
+      action: async () => {
+        for (const proposal of pendingReview) {
+          await applyIntelligenceProposal(proposal.id);
+        }
+      },
     });
 
   const rejectAllPending = () =>
-    runAction(async () => {
-      for (const proposal of pendingReview) {
-        await rejectIntelligenceProposal(proposal.id);
-      }
+    setConfirmDialog({
+      title: '批量拒绝',
+      description: `即将拒绝 ${pendingReview.length} 条 pending proposal，是否继续？`,
+      action: async () => {
+        for (const proposal of pendingReview) {
+          await rejectIntelligenceProposal(proposal.id);
+        }
+      },
     });
 
   return (
@@ -249,9 +270,32 @@ export default function ProposalsPage() {
         {blocked.length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">暂无被拦截的高风险 proposal。</div>
         ) : (
-          blocked.map(proposal => <ProposalRow key={proposal.id} proposal={proposal} />)
-        )}
-      </section>
+         blocked.map(proposal => <ProposalRow key={proposal.id} proposal={proposal} />)
+       )}
+     </section>
+      <Dialog open={confirmDialog !== null} onOpenChange={open => !open && setConfirmDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogDescription>{confirmDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                const dialog = confirmDialog;
+                if (!dialog) return;
+                setConfirmDialog(null);
+                runAction(dialog.action);
+              }}
+            >
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
