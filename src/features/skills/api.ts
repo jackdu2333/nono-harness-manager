@@ -76,7 +76,15 @@ export async function markDuplicate(skillId: string, groupId: string | null): Pr
   return invoke('mark_duplicate', { skillId, groupId });
 }
 
-/** Log a Harness panel action (NOT a Codex invocation). §八 */
+/**
+ * Log a Harness panel action (NOT a Codex invocation). §八
+ *
+ * §六 标准 action 命名（保持稳定，为 Analytics 统计打基础）：
+ *   核心: view_detail | copy_path | open_dir | copy_ref | edit_description |
+ *         set_category | set_status | archive | delete_index
+ *   标记: toggle_favorite | toggle_needs_review | toggle_needs_improvement |
+ *         update_improvement_note | update_review_note
+ */
 export async function recordSkillUsage(skillId: string, action: string): Promise<void> {
   return invoke('record_skill_usage', { skillId, action });
 }

@@ -328,6 +328,18 @@ pub async fn record_skill_usage(
     action: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), String> {
+    // §六 action 命名契约：保持稳定，为 Analytics 统计打基础。
+    // 不在白名单的 action 仍记录，但打 warn 以暴露命名漂移。
+    const PANEL_ACTIONS: &[&str] = &[
+        "view_detail", "copy_path", "open_dir", "copy_ref",
+        "edit_description", "set_category", "set_status", "archive", "delete_index",
+        "toggle_favorite", "toggle_needs_review", "toggle_needs_improvement",
+        "update_improvement_note", "update_review_note",
+    ];
+    if !PANEL_ACTIONS.contains(&action.as_str()) {
+        log::warn!("Unknown panel action '{}' — recorded but not in PANEL_ACTIONS", action);
+    }
+
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"

@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
   X, Folder, Link as LinkIcon, Edit2, RefreshCw, Wand2, Star, Archive,
   Trash2, Quote, ClipboardList, Check,
 } from 'lucide-react';
@@ -18,8 +21,13 @@ interface SkillDetailProps {
   onClose: () => void;
 }
 
-// Lifecycle status is single-choice (§四). Tags below are orthogonal toggles.
-const LIFECYCLE_STATUSES = ['draft', 'active', 'deprecated', 'broken'] as const;
+// §四 生命周期（单选）：draft/active/deprecated/broken — 中文 label 消除"归档还 active 吗"的歧义
+const LIFECYCLE_STATUSES = [
+  { value: 'draft', label: '草稿' },
+  { value: 'active', label: '使用中' },
+  { value: 'deprecated', label: '弃用' },
+  { value: 'broken', label: '失效' },
+] as const;
 const IMPROVEMENT_STATUSES = [
   { value: '', label: '未设置' },
   { value: 'planned', label: '计划中' },
@@ -33,6 +41,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     updateDescription, scanSource, isScanning,
     setCategory, setStatus, toggleFavorite, toggleNeedsReview, toggleNeedsImprovement,
     archive, deleteIndex, updateImprovementNote, updateReviewNote, recordUsage,
+    duplicateAssignment, duplicateReasons, markDuplicate,
   } = useSkillsStore();
 
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -42,7 +51,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   const [editImproveNote, setEditImproveNote] = useState('');
   const [editImproveStatus, setEditImproveStatus] = useState('');
   const [editReviewNote, setEditReviewNote] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (skill) {
@@ -53,7 +62,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
       setEditImproveNote(skill.improvement_note || '');
       setEditImproveStatus(skill.improvement_status || '');
       setEditReviewNote(skill.review_note || '');
-      setConfirmDelete(false);
+      setShowDeleteDialog(false);
     }
   }, [skill]);
 
@@ -119,14 +128,11 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     recordUsage(skill.id, 'update_review_note');
     await updateReviewNote(skill.id, editReviewNote.trim() || null);
   };
+  // §五 删除索引：通过 Dialog 明确确认（替代二次点击按钮），确认后执行
   const handleDelete = async () => {
-    // Two-step confirm. Removes Harness index only — never the local file. §五 / 验收7
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
     recordUsage(skill.id, 'delete_index');
     await deleteIndex(skill.id);
+    setShowDeleteDialog(false);
     onClose();
   };
 
@@ -180,15 +186,15 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           <div className="flex flex-wrap gap-1.5">
             {LIFECYCLE_STATUSES.map((s) => (
               <button
-                key={s}
-                onClick={() => handleSetStatus(s)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors capitalize ${
-                  skill.status === s
+                key={s.value}
+                onClick={() => handleSetStatus(s.value)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                  skill.status === s.value
                     ? 'bg-foreground text-background border-foreground'
                     : 'bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground'
                 }`}
               >
-                {s}
+                {s.label}
               </button>
             ))}
           </div>
@@ -196,7 +202,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
 
         {/* Orthogonal tags — stackable */}
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-foreground">标签</h4>
+          <h4 className="text-sm font-semibold text-foreground">管理标记</h4>
           <div className="flex flex-wrap gap-1.5">
             <TagBtn active={skill.is_favorite === 1} onClick={handleToggleFav} activeClass="bg-yellow-500 text-white">
               <Star className="w-3 h-3" />常用
@@ -212,6 +218,45 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
             </TagBtn>
           </div>
         </div>
+
+        {/* §七/§二 Suspected duplicate — real-time detection, persistable via 保存标记 */}
+        {(duplicateAssignment[skill.id] || skill.duplicate_group_id) && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">重复检测</h4>
+            <div className="space-y-2 bg-card rounded-lg p-3 border border-border">
+              {duplicateReasons[skill.id] && duplicateReasons[skill.id].length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground/70">命中规则：</span>
+                  {duplicateReasons[skill.id].join('、')}
+                </div>
+              )}
+              <div className="text-[11px] text-muted-foreground/60">
+                {skill.duplicate_group_id
+                  ? '已保存重复标记（持久化，刷新不丢失）'
+                  : '实时检测结果，未保存。刷新或规则变化后可能改变。'}
+              </div>
+              {skill.duplicate_group_id ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => markDuplicate(skill.id, null)}
+                >
+                  清除已保存标记
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => markDuplicate(skill.id, duplicateAssignment[skill.id])}
+                >
+                  保存重复标记
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Description */}
         <div className="space-y-3">
@@ -363,8 +408,8 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           </div>
           <div>
             <div className="text-xs text-muted-foreground/80 mb-1 font-medium">{t('skills.status')}</div>
-            <div className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground capitalize">
-              {skill.status}
+            <div className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+              {LIFECYCLE_STATUSES.find((s) => s.value === skill.status)?.label || skill.status}
             </div>
           </div>
         </div>
@@ -388,23 +433,34 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           </div>
         </div>
 
-        {/* Delete index — dangerous, two-step confirm */}
+        {/* §五 Delete index — Dialog confirm (replaces two-step click) */}
         <div className="pt-4 border-t border-border">
           <Button
-            variant={confirmDelete ? 'destructive' : 'outline'}
+            variant="outline"
             className="w-full gap-2"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
           >
             <Trash2 className="w-4 h-4" />
-            {confirmDelete ? '再次点击确认：仅删除 Harness 索引（不删本地文件）' : '删除 Harness 索引'}
+            删除 Harness 索引
           </Button>
-          {confirmDelete && (
-            <div className="text-[11px] text-orange-600 dark:text-orange-400 mt-1.5 text-center">
-              本地文件不会被删除，下次扫描会重新纳入
-            </div>
-          )}
         </div>
       </div>
+
+      {/* §五 Delete confirm Dialog — makes the consequence explicit */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除 Harness 索引</DialogTitle>
+            <DialogDescription>
+              仅删除 Harness 索引，不删除本地文件。下次扫描可能重新出现。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>取消</Button>
+            <Button variant="destructive" onClick={handleDelete}>确认删除索引</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

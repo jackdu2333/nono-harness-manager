@@ -19,7 +19,7 @@ export function SkillList({
   onSelectSkill: (skill: Skill) => void;
   globalFilter: string;
 }) {
-  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons } = useSkillsStore();
+  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons, recordUsage } = useSkillsStore();
   const { t } = useTranslation();
 
   const columns = useMemo(() => [
@@ -44,7 +44,7 @@ export function SkillList({
               {duplicateAssignment[skill.id] && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                  title={dupReason?.join('、')}
+                  title={`实时检测（未保存，刷新或规则变化可能改变）${dupReason?.length ? ' · 命中：' + dupReason.join('、') : ''}`}
                 >
                   疑似重复
                 </span>
@@ -133,7 +133,11 @@ export function SkillList({
             <tr
               key={row.id}
               className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
-              onClick={() => onSelectSkill(row.original)}
+              onClick={() => {
+                // §一/§八：打开详情是最基础的面板操作，必须计入 usage
+                recordUsage(row.original.id, 'view_detail');
+                onSelectSkill(row.original);
+              }}
             >
               {row.getVisibleCells().map(cell => (
                 <td key={cell.id} className="px-4 py-3">
