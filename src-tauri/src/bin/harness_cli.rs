@@ -73,6 +73,16 @@ async fn run() -> Result<(), String> {
                 serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?
             );
         }
+        "rollback" => {
+            let proposal_id = args.get(1).ok_or_else(usage)?;
+            trust_policy::rollback_proposal(&pool, proposal_id, "harness_cli").await?;
+            println!(r#"{{"id":"{}","status":"rolled_back"}}"#, proposal_id);
+        }
+        "reject" => {
+            let proposal_id = args.get(1).ok_or_else(usage)?;
+            trust_policy::reject_proposal(&pool, proposal_id, "harness_cli").await?;
+            println!(r#"{{"id":"{}","status":"rejected"}}"#, proposal_id);
+        }
         _ => return Err(usage()),
     }
 
@@ -285,7 +295,7 @@ async fn create_proposal(
 }
 
 fn usage() -> String {
-    "Usage: harness_cli list [skill|mcp_server] | context <skill|mcp_server> <id> | propose <type> <id> <proposal_type> '<json>'".to_string()
+    "Usage: harness_cli list [skill|mcp_server] | context <skill|mcp_server> <id> | propose <type> <id> <proposal_type> '<json>' | rollback <proposal_id> | reject <proposal_id>".to_string()
 }
 
 fn validate_resource_type(resource_type: &str) -> Result<(), String> {
