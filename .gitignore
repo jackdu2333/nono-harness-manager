@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rust / Tauri build artifacts (avoid committing 5GB+ target dir)
+src-tauri/target/
