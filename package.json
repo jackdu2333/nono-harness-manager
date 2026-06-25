@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "harness:cli": "cargo run --manifest-path src-tauri/Cargo.toml --bin harness_cli --",
+    "harness:cli:build": "cargo build --manifest-path src-tauri/Cargo.toml --bin harness_cli --release",
     "harness:mcp": "node scripts/harness-mcp-server.mjs"
   },
   "dependencies": {

@@ -2,8 +2,26 @@ use chrono::Utc;
 use serde_json::{json, Value};
 use sqlx::{Row, SqlitePool};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
+
+const SAFE_CONTEXT_MAX_CHARS: usize = 2048;
+const SAFE_CONTEXT_FILES: &[&str] = &[
+    "README.md",
+    "readme.md",
+    "SKILL.md",
+    "skill.md",
+    "skill.yaml",
+    "skill.json",
+];
+const PROPOSAL_ALLOWED_FIELDS: &[&str] = &[
+    "description",
+    "summary",
+    "category",
+    "tags",
+    "confidence",
+    "evidence_files",
+];
 
 #[tokio::main]
 async fn main() {
@@ -25,21 +43,37 @@ async fn run() -> Result<(), String> {
         "list" => {
             let resource_type = args.get(1).map(String::as_str);
             let output = list_resources(&pool, resource_type).await?;
-            println!("{}", serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?
+            );
         }
         "context" => {
             let resource_type = args.get(1).ok_or_else(usage)?;
             let resource_id = args.get(2).ok_or_else(usage)?;
             let output = get_context(&pool, resource_type, resource_id).await?;
-            println!("{}", serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?
+            );
         }
         "propose" => {
             let resource_type = args.get(1).ok_or_else(usage)?;
             let resource_id = args.get(2).ok_or_else(usage)?;
             let proposal_type = args.get(3).ok_or_else(usage)?;
             let proposed_changes = args.get(4).ok_or_else(usage)?;
-            let output = create_proposal(&pool, resource_type, resource_id, proposal_type, proposed_changes).await?;
-            println!("{}", serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?);
+            let output = create_proposal(
+                &pool,
+                resource_type,
+                resource_id,
+                proposal_type,
+                proposed_changes,
+            )
+            .await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?
+            );
         }
         _ => return Err(usage()),
     }
@@ -51,16 +85,21 @@ async fn connect_pool() -> Result<SqlitePool, String> {
     let db_path = if let Ok(path) = env::var("HARNESS_DB_PATH") {
         PathBuf::from(path)
     } else {
-        let data_dir = dirs::data_dir().ok_or_else(|| "Unable to resolve user data directory".to_string())?;
+        let data_dir =
+            dirs::data_dir().ok_or_else(|| "Unable to resolve user data directory".to_string())?;
         data_dir
             .join("com.jackdu.nono-harness-manager")
             .join("harness.db")
     };
 
     let db_url = format!("sqlite:{}?mode=rwc", db_path.to_string_lossy());
-    let pool = SqlitePool::connect(&db_url)
-        .await
-        .map_err(|e| format!("Failed to connect Harness database at {}: {}", db_path.display(), e))?;
+    let pool = SqlitePool::connect(&db_url).await.map_err(|e| {
+        format!(
+            "Failed to connect Harness database at {}: {}",
+            db_path.display(),
+            e
+        )
+    })?;
 
     sqlx::migrate!("./migrations")
         .run(&pool)
@@ -81,17 +120,19 @@ async fn list_resources(pool: &SqlitePool, resource_type: Option<&str>) -> Resul
         .await
         .map_err(|e| e.to_string())?;
 
-        resources.extend(rows.into_iter().map(|row| json!({
-            "resource_type": "skill",
-            "id": row.get::<String, _>("id"),
-            "name": row.get::<String, _>("name"),
-            "description": row.get::<Option<String>, _>("description"),
-            "summary": row.get::<Option<String>, _>("summary"),
-            "category": row.get::<Option<String>, _>("category"),
-            "tags": row.get::<Option<String>, _>("tags"),
-            "confidence": row.get::<Option<String>, _>("confidence"),
-            "status": row.get::<String, _>("status"),
-        })));
+        resources.extend(rows.into_iter().map(|row| {
+            json!({
+                "resource_type": "skill",
+                "id": row.get::<String, _>("id"),
+                "name": row.get::<String, _>("name"),
+                "description": row.get::<Option<String>, _>("description"),
+                "summary": row.get::<Option<String>, _>("summary"),
+                "category": row.get::<Option<String>, _>("category"),
+                "tags": row.get::<Option<String>, _>("tags"),
+                "confidence": row.get::<Option<String>, _>("confidence"),
+                "status": row.get::<String, _>("status"),
+            })
+        }));
     }
 
     if resource_type.is_none() || resource_type == Some("mcp_server") {
@@ -102,23 +143,29 @@ async fn list_resources(pool: &SqlitePool, resource_type: Option<&str>) -> Resul
         .await
         .map_err(|e| e.to_string())?;
 
-        resources.extend(rows.into_iter().map(|row| json!({
-            "resource_type": "mcp_server",
-            "id": row.get::<String, _>("id"),
-            "name": row.get::<String, _>("name"),
-            "description": row.get::<Option<String>, _>("description"),
-            "summary": row.get::<Option<String>, _>("summary"),
-            "category": row.get::<Option<String>, _>("category"),
-            "tags": row.get::<Option<String>, _>("tags"),
-            "confidence": row.get::<Option<String>, _>("confidence"),
-            "status": row.get::<Option<String>, _>("status"),
-        })));
+        resources.extend(rows.into_iter().map(|row| {
+            json!({
+                "resource_type": "mcp_server",
+                "id": row.get::<String, _>("id"),
+                "name": row.get::<String, _>("name"),
+                "description": row.get::<Option<String>, _>("description"),
+                "summary": row.get::<Option<String>, _>("summary"),
+                "category": row.get::<Option<String>, _>("category"),
+                "tags": row.get::<Option<String>, _>("tags"),
+                "confidence": row.get::<Option<String>, _>("confidence"),
+                "status": row.get::<Option<String>, _>("status"),
+            })
+        }));
     }
 
     Ok(json!({ "resources": resources }))
 }
 
-async fn get_context(pool: &SqlitePool, resource_type: &str, resource_id: &str) -> Result<Value, String> {
+async fn get_context(
+    pool: &SqlitePool,
+    resource_type: &str,
+    resource_id: &str,
+) -> Result<Value, String> {
     match resource_type {
         "skill" => {
             let row = sqlx::query(
@@ -128,6 +175,17 @@ async fn get_context(pool: &SqlitePool, resource_type: &str, resource_id: &str) 
             .fetch_one(pool)
             .await
             .map_err(|e| e.to_string())?;
+            let path = row.get::<String, _>("path");
+            let entry_file = row.get::<Option<String>, _>("entry_file");
+            let safe_excerpt = safe_skill_content_excerpt(&path, entry_file.as_deref());
+            let context_evidence = safe_excerpt
+                .as_ref()
+                .map(|excerpt| json!(excerpt.evidence_files))
+                .map(|value| value.to_string());
+            let evidence_files = row
+                .get::<Option<String>, _>("evidence_files")
+                .or(context_evidence);
+
             Ok(json!({
                 "resource_type": "skill",
                 "id": row.get::<String, _>("id"),
@@ -138,10 +196,12 @@ async fn get_context(pool: &SqlitePool, resource_type: &str, resource_id: &str) 
                 "tags": row.get::<Option<String>, _>("tags"),
                 "confidence": row.get::<Option<String>, _>("confidence"),
                 "safe_context": {
-                    "path": row.get::<String, _>("path"),
-                    "entry_file": row.get::<Option<String>, _>("entry_file")
+                    "path": path,
+                    "entry_file": entry_file,
+                    "safe_content_excerpt": safe_excerpt.as_ref().map(|excerpt| excerpt.content.clone()),
+                    "excerpt_evidence_files": safe_excerpt.as_ref().map(|excerpt| excerpt.evidence_files.clone())
                 },
-                "evidence_files": row.get::<Option<String>, _>("evidence_files")
+                "evidence_files": evidence_files
             }))
         }
         "mcp_server" => {
@@ -181,8 +241,14 @@ async fn create_proposal(
     proposal_type: &str,
     proposed_changes: &str,
 ) -> Result<Value, String> {
-    let _: Value = serde_json::from_str(proposed_changes)
+    let changes: Value = serde_json::from_str(proposed_changes)
         .map_err(|e| format!("proposed_changes must be JSON: {}", e))?;
+    validate_resource_type(resource_type)?;
+    validate_proposed_changes(&changes)?;
+    if !resource_exists(pool, resource_type, resource_id).await? {
+        return Err("Resource not found".to_string());
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
@@ -216,4 +282,104 @@ async fn create_proposal(
 
 fn usage() -> String {
     "Usage: harness_cli list [skill|mcp_server] | context <skill|mcp_server> <id> | propose <type> <id> <proposal_type> '<json>'".to_string()
+}
+
+fn validate_resource_type(resource_type: &str) -> Result<(), String> {
+    if matches!(
+        resource_type,
+        "skill" | "mcp_server" | "memory_source" | "knowledge_base" | "project"
+    ) {
+        Ok(())
+    } else {
+        Err("Unsupported resource type".to_string())
+    }
+}
+
+fn validate_proposed_changes(changes: &Value) -> Result<(), String> {
+    let object = changes
+        .as_object()
+        .ok_or_else(|| "proposed_changes must be a JSON object".to_string())?;
+
+    for key in object.keys() {
+        if !PROPOSAL_ALLOWED_FIELDS.contains(&key.as_str()) {
+            return Err(format!("Unsupported proposed_changes field: {}", key));
+        }
+    }
+
+    Ok(())
+}
+
+async fn resource_exists(
+    pool: &SqlitePool,
+    resource_type: &str,
+    resource_id: &str,
+) -> Result<bool, String> {
+    let query = match resource_type {
+        "skill" => "SELECT COUNT(*) as count FROM skills WHERE id = ?",
+        "mcp_server" => "SELECT COUNT(*) as count FROM mcp_servers WHERE id = ?",
+        "memory_source" => "SELECT COUNT(*) as count FROM memory_sources WHERE id = ?",
+        "knowledge_base" => "SELECT COUNT(*) as count FROM knowledge_bases WHERE id = ?",
+        "project" => "SELECT COUNT(*) as count FROM projects WHERE id = ?",
+        _ => return Err("Unsupported resource type".to_string()),
+    };
+
+    let count: i64 = sqlx::query(query)
+        .bind(resource_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .get("count");
+
+    Ok(count > 0)
+}
+
+struct SafeContentExcerpt {
+    content: String,
+    evidence_files: Vec<String>,
+}
+
+fn safe_skill_content_excerpt(path: &str, entry_file: Option<&str>) -> Option<SafeContentExcerpt> {
+    let skill_path = Path::new(path);
+    let skill_dir = if skill_path.is_dir() {
+        skill_path.to_path_buf()
+    } else {
+        skill_path.parent()?.to_path_buf()
+    };
+
+    let mut candidates = Vec::new();
+    if let Some(entry_file) = entry_file.filter(|file| SAFE_CONTEXT_FILES.contains(file)) {
+        candidates.push(skill_dir.join(entry_file));
+    }
+    candidates.extend(SAFE_CONTEXT_FILES.iter().map(|file| skill_dir.join(file)));
+
+    for candidate in candidates {
+        if !is_safe_excerpt_file(&skill_dir, &candidate) {
+            continue;
+        }
+
+        if let Ok(content) = std::fs::read_to_string(&candidate) {
+            let excerpt = content
+                .chars()
+                .take(SAFE_CONTEXT_MAX_CHARS)
+                .collect::<String>();
+            let file_name = candidate.file_name()?.to_string_lossy().to_string();
+            return Some(SafeContentExcerpt {
+                content: excerpt,
+                evidence_files: vec![file_name],
+            });
+        }
+    }
+
+    None
+}
+
+fn is_safe_excerpt_file(skill_dir: &Path, candidate: &PathBuf) -> bool {
+    if candidate.parent() != Some(skill_dir) {
+        return false;
+    }
+
+    candidate
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| SAFE_CONTEXT_FILES.contains(&name))
 }

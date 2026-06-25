@@ -1,5 +1,5 @@
-pub mod repositories;
 pub mod mcp_repository;
+pub mod repositories;
 
 use sqlx::SqlitePool;
 use std::fs;
@@ -11,12 +11,11 @@ pub async fn init_db(app_handle: &AppHandle) -> Result<SqlitePool, String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    fs::create_dir_all(&app_dir)
-        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
-    
+    fs::create_dir_all(&app_dir).map_err(|e| format!("Failed to create app data dir: {}", e))?;
+
     let db_path = app_dir.join("harness.db");
     let db_url = format!("sqlite:{}?mode=rwc", db_path.to_string_lossy());
-    
+
     let pool = SqlitePool::connect(&db_url)
         .await
         .map_err(|e| format!("Failed to connect SQLite: {}", e))?;
@@ -25,7 +24,7 @@ pub async fn init_db(app_handle: &AppHandle) -> Result<SqlitePool, String> {
         .run(&pool)
         .await
         .map_err(|e| format!("Failed to run database migrations: {}", e))?;
-    
+
     Ok(pool)
 }
 
@@ -45,9 +44,17 @@ mod tests {
             .await
             .expect("migrations should run");
 
-        for table in ["agents", "skill_sources", "skills", "scan_logs", "resource_usage_events", "settings", "mcp_servers"] {
+        for table in [
+            "agents",
+            "skill_sources",
+            "skills",
+            "scan_logs",
+            "resource_usage_events",
+            "settings",
+            "mcp_servers",
+        ] {
             let exists: (i64,) = sqlx::query_as(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?"
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
             )
             .bind(table)
             .fetch_one(&pool)
@@ -76,12 +83,15 @@ mod tests {
             "manual_override",
             "last_analyzed_at",
         ] {
-            assert!(skill_columns.iter().any(|name| name == column), "{column} should exist on skills");
+            assert!(
+                skill_columns.iter().any(|name| name == column),
+                "{column} should exist on skills"
+            );
         }
 
         for table in ["intelligence_proposals", "audit_logs"] {
             let exists: (i64,) = sqlx::query_as(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?"
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
             )
             .bind(table)
             .fetch_one(&pool)

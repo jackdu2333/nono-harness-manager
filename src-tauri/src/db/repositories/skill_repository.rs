@@ -17,23 +17,24 @@ pub async fn insert_skill(pool: &SqlitePool, skill: &Skill) -> Result<(), sqlx::
     if let Some(existing_skill) = existing {
         let is_manual = existing_skill.description_is_manual.unwrap_or(0) == 1;
 
-        let (final_desc, final_desc_src, final_desc_conf, final_desc_upd, final_desc_manual) = if is_manual {
-            (
-                existing_skill.description,
-                existing_skill.description_source,
-                existing_skill.description_confidence,
-                existing_skill.description_updated_at,
-                existing_skill.description_is_manual,
-            )
-        } else {
-            (
-                skill.description.clone(),
-                skill.description_source.clone(),
-                skill.description_confidence.clone(),
-                skill.description_updated_at.clone(),
-                skill.description_is_manual,
-            )
-        };
+        let (final_desc, final_desc_src, final_desc_conf, final_desc_upd, final_desc_manual) =
+            if is_manual {
+                (
+                    existing_skill.description,
+                    existing_skill.description_source,
+                    existing_skill.description_confidence,
+                    existing_skill.description_updated_at,
+                    existing_skill.description_is_manual,
+                )
+            } else {
+                (
+                    skill.description.clone(),
+                    skill.description_source.clone(),
+                    skill.description_confidence.clone(),
+                    skill.description_updated_at.clone(),
+                    skill.description_is_manual,
+                )
+            };
 
         sqlx::query(
             r#"

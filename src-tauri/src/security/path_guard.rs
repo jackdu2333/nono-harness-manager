@@ -64,8 +64,12 @@ mod tests {
         assert!(validate_scan_root(home.to_string_lossy().as_ref()).is_err());
         assert!(validate_scan_root(home.join(".ssh").to_string_lossy().as_ref()).is_err());
         assert!(validate_scan_root(home.join(".gnupg").to_string_lossy().as_ref()).is_err());
-        assert!(validate_scan_root(home.join("Library/Keychains").to_string_lossy().as_ref()).is_err());
-        assert!(validate_scan_root(home.join("Library/Messages").to_string_lossy().as_ref()).is_err());
+        assert!(
+            validate_scan_root(home.join("Library/Keychains").to_string_lossy().as_ref()).is_err()
+        );
+        assert!(
+            validate_scan_root(home.join("Library/Messages").to_string_lossy().as_ref()).is_err()
+        );
         assert!(validate_scan_root(home.join("Library/Mail").to_string_lossy().as_ref()).is_err());
     }
 

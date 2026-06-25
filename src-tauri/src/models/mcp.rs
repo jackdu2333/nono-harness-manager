@@ -9,7 +9,7 @@ pub struct McpServer {
     pub category: Option<String>,
     pub command: String,
     pub args: Option<String>, // JSON array string
-    pub env: Option<String>, // JSON object string
+    pub env: Option<String>,  // JSON object string
     pub source_path: Option<String>,
     pub summary: Option<String>,
     pub tags: Option<String>,

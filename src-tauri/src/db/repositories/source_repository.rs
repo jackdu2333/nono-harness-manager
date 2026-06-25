@@ -42,7 +42,7 @@ pub async fn update_source(pool: &SqlitePool, source: &SkillSource) -> Result<()
         UPDATE skill_sources 
         SET name = ?, path = ?, source_type = ?, enabled = ?, scan_depth = ?, updated_at = ?
         WHERE id = ?
-        "#
+        "#,
     )
     .bind(&source.name)
     .bind(&source.path)

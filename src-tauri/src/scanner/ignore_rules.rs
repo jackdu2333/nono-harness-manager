@@ -12,7 +12,15 @@ pub fn build_walker(path: &Path, max_depth: usize) -> ignore::Walk {
         let name = e.file_name().to_string_lossy();
         !matches!(
             name.as_ref(),
-            "node_modules" | ".git" | "dist" | "build" | "__pycache__" | ".venv" | ".DS_Store" | "target" | "coverage"
+            "node_modules"
+                | ".git"
+                | "dist"
+                | "build"
+                | "__pycache__"
+                | ".venv"
+                | ".DS_Store"
+                | "target"
+                | "coverage"
         )
     });
 

@@ -25,7 +25,7 @@ fn extract_from_frontmatter(file_path: &Path) -> Option<ParsedFrontmatter> {
     if !content.starts_with("---\n") && !content.starts_with("---\r\n") {
         return None;
     }
-    
+
     let mut parts = content.splitn(3, "---");
     parts.next(); // Skip empty prefix
     if let Some(frontmatter) = parts.next() {
@@ -62,7 +62,12 @@ fn extract_from_markdown(file_path: &Path) -> Option<String> {
             }
             Event::End(TagEnd::Heading(_)) => {
                 let heading_text = current_heading.trim().to_lowercase();
-                if heading_text.contains("description") || heading_text.contains("描述") || heading_text.contains("overview") || heading_text.contains("用途") || heading_text.contains("简介") {
+                if heading_text.contains("description")
+                    || heading_text.contains("描述")
+                    || heading_text.contains("overview")
+                    || heading_text.contains("用途")
+                    || heading_text.contains("简介")
+                {
                     under_target = true;
                 } else {
                     under_target = false;
@@ -145,7 +150,11 @@ pub fn extract_skill_description(
                         summary.push_str("...");
                     }
                     return SkillDescriptionResult {
-                        description: if summary.is_empty() { None } else { Some(summary) },
+                        description: if summary.is_empty() {
+                            None
+                        } else {
+                            Some(summary)
+                        },
                         category: parsed.category,
                         source: "frontmatter".to_string(),
                         confidence: "high".to_string(),
@@ -170,7 +179,10 @@ pub fn extract_skill_description(
     }
 
     SkillDescriptionResult {
-        description: Some(format!("暂无描述。系统推测其用途可能与 {} 相关。", skill_name)),
+        description: Some(format!(
+            "暂无描述。系统推测其用途可能与 {} 相关。",
+            skill_name
+        )),
         category: None,
         source: "filename_guess".to_string(),
         confidence: "low".to_string(),

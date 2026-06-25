@@ -1,12 +1,37 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 
-const manifestPath = new URL('../src-tauri/Cargo.toml', import.meta.url).pathname;
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const projectRoot = join(scriptDir, '..');
+
+function resolveCliBinary() {
+  if (process.env.HARNESS_CLI_BIN) {
+    if (existsSync(process.env.HARNESS_CLI_BIN)) {
+      return process.env.HARNESS_CLI_BIN;
+    }
+    throw new Error(`HARNESS_CLI_BIN does not exist: ${process.env.HARNESS_CLI_BIN}`);
+  }
+
+  const candidates = [
+    join(projectRoot, 'src-tauri', 'target', 'release', 'harness_cli'),
+    join(projectRoot, 'src-tauri', 'target', 'debug', 'harness_cli'),
+  ];
+
+  const binary = candidates.find(candidate => existsSync(candidate));
+  if (binary) {
+    return binary;
+  }
+
+  throw new Error('harness_cli binary not found. Build it first with: cargo build --manifest-path src-tauri/Cargo.toml --bin harness_cli --release');
+}
 
 function runCli(args) {
   return new Promise((resolve, reject) => {
-    const child = spawn('cargo', ['run', '--quiet', '--manifest-path', manifestPath, '--bin', 'harness_cli', '--', ...args], {
+    const child = spawn(resolveCliBinary(), args, {
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

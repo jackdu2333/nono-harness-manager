@@ -16,7 +16,7 @@ pub async fn add_agent(pool: &SqlitePool, agent: &Agent) -> Result<(), sqlx::Err
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
-        "#
+        "#,
     )
     .bind(&agent.id)
     .bind(&agent.name)
