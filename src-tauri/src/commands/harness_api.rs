@@ -18,14 +18,7 @@ const SAFE_CONTEXT_FILES: &[&str] = &[
     "skill.yaml",
     "skill.json",
 ];
-const PROPOSAL_ALLOWED_FIELDS: &[&str] = &[
-    "description",
-    "summary",
-    "category",
-    "tags",
-    "confidence",
-    "evidence_files",
-];
+
 
 #[command]
 pub async fn list_harness_resources(
@@ -397,19 +390,7 @@ async fn get_mcp_context(
     })
 }
 
-fn validate_proposed_changes(changes: &Value) -> Result<(), String> {
-    let object = changes
-        .as_object()
-        .ok_or_else(|| "proposed_changes must be a JSON object".to_string())?;
 
-    for key in object.keys() {
-        if !PROPOSAL_ALLOWED_FIELDS.contains(&key.as_str()) {
-            return Err(format!("Unsupported proposed_changes field: {}", key));
-        }
-    }
-
-    Ok(())
-}
 
 struct SafeContentExcerpt {
     content: String,
