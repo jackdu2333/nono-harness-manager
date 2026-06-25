@@ -70,6 +70,20 @@ fn main() {
             commands::harness_api::apply_intelligence_proposal,
             commands::harness_api::reject_intelligence_proposal,
             commands::harness_api::rollback_intelligence_proposal,
+            commands::local_assets::list_memory_sources,
+            commands::local_assets::add_memory_source,
+            commands::local_assets::list_memory_files,
+            commands::local_assets::run_memory_health_check,
+            commands::local_assets::list_knowledge_bases,
+            commands::local_assets::add_knowledge_base,
+            commands::local_assets::list_knowledge_files,
+            commands::local_assets::list_projects,
+            commands::local_assets::add_project,
+            commands::local_assets::bind_project_resource,
+            commands::local_assets::list_project_bindings,
+            commands::local_assets::get_analytics_overview,
+            commands::local_assets::run_global_health_check,
+            commands::local_assets::open_local_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

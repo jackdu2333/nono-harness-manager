@@ -52,6 +52,10 @@ mod tests {
             "resource_usage_events",
             "settings",
             "mcp_servers",
+            "memory_sources",
+            "knowledge_bases",
+            "projects",
+            "project_resource_bindings",
         ] {
             let exists: (i64,) = sqlx::query_as(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -99,6 +103,24 @@ mod tests {
             .expect("table lookup should succeed");
             assert_eq!(exists.0, 1, "{table} should exist");
         }
+
+        let memory_columns = sqlx::query("PRAGMA table_info(memory_sources)")
+            .fetch_all(&pool)
+            .await
+            .expect("memory_sources columns should be readable")
+            .into_iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect::<Vec<_>>();
+        assert!(memory_columns.iter().any(|name| name == "project_id"));
+
+        let knowledge_columns = sqlx::query("PRAGMA table_info(knowledge_bases)")
+            .fetch_all(&pool)
+            .await
+            .expect("knowledge_bases columns should be readable")
+            .into_iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect::<Vec<_>>();
+        assert!(knowledge_columns.iter().any(|name| name == "project_id"));
 
         let proposal_columns = sqlx::query("PRAGMA table_info(intelligence_proposals)")
             .fetch_all(&pool)

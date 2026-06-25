@@ -445,22 +445,31 @@ fn is_safe_excerpt_file(skill_dir: &Path, candidate: &PathBuf) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::trust_policy::{assess_proposal_risk, RiskLevel, TrustPolicySettings};
     use serde_json::json;
 
     #[test]
-    fn proposal_changes_reject_unknown_fields() {
+    fn trust_policy_rejects_forbidden_proposal_fields() {
         let changes = json!({
             "description": "Useful description",
             "launch_command": "rm -rf ~"
         });
+        let settings = TrustPolicySettings::default();
 
-        assert!(validate_proposed_changes(&changes).is_err());
+        let decision = assess_proposal_risk(
+            "skill",
+            "description_update",
+            &changes,
+            true,
+            &settings,
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::High);
+        assert!(!decision.can_auto_apply);
     }
 
     #[test]
-    fn proposal_changes_accept_ai_metadata_fields() {
+    fn trust_policy_accepts_ai_metadata_fields() {
         let changes = json!({
             "description": "Useful description",
             "summary": "Short summary",
@@ -469,8 +478,18 @@ mod tests {
             "confidence": "medium",
             "evidence_files": ["SKILL.md"]
         });
+        let settings = TrustPolicySettings::default();
 
-        assert!(validate_proposed_changes(&changes).is_ok());
+        let decision = assess_proposal_risk(
+            "skill",
+            "description_update",
+            &changes,
+            true,
+            &settings,
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::Low);
+        assert!(decision.can_auto_apply);
     }
 
     #[test]

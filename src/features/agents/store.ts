@@ -118,6 +118,7 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
 
   launchAgent: async (id) => {
     try {
+      await api.launchAgent(id);
       await get().fetchAgents();
     } catch (err) {
       console.error('Failed to launch agent:', err);

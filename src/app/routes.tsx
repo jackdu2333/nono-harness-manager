@@ -6,6 +6,11 @@ import SkillsPage from "../pages/Skills";
 import AgentsPage from "../pages/Agents";
 import SettingsPage from "../pages/Settings";
 import ProposalsPage from "../pages/Proposals";
+import MemoryPage from "../pages/Memory";
+import KnowledgePage from "../pages/Knowledge";
+import ProjectsPage from "../pages/Projects";
+import AnalyticsPage from "../pages/Analytics";
+import HealthPage from "../pages/Health";
 
 import McpPage from "../pages/Mcp";
 
@@ -25,11 +30,11 @@ export function AppRoutes() {
         <Route path="skills" element={<SkillsPage />} />
         <Route path="mcp" element={<McpPage />} />
         <Route path="proposals" element={<ErrorBoundary><ProposalsPage /></ErrorBoundary>} />
-        <Route path="memory" element={<ErrorBoundary><Placeholder title="Memory" /></ErrorBoundary>} />
-        <Route path="knowledge" element={<ErrorBoundary><Placeholder title="Knowledge" /></ErrorBoundary>} />
-        <Route path="projects" element={<ErrorBoundary><Placeholder title="Projects" /></ErrorBoundary>} />
-        <Route path="analytics" element={<ErrorBoundary><Placeholder title="Analytics" /></ErrorBoundary>} />
-        <Route path="health" element={<ErrorBoundary><Placeholder title="Health Check" /></ErrorBoundary>} />
+        <Route path="memory" element={<ErrorBoundary><MemoryPage /></ErrorBoundary>} />
+        <Route path="knowledge" element={<ErrorBoundary><KnowledgePage /></ErrorBoundary>} />
+        <Route path="projects" element={<ErrorBoundary><ProjectsPage /></ErrorBoundary>} />
+        <Route path="analytics" element={<ErrorBoundary><AnalyticsPage /></ErrorBoundary>} />
+        <Route path="health" element={<ErrorBoundary><HealthPage /></ErrorBoundary>} />
         <Route path="settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
       </Route>
     </Routes>

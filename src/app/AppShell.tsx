@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { LayoutDashboard, Settings, Layers, Box, Cpu, Database, Activity, FileCode2, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Settings, Layers, Box, Cpu, Database, FileCode2, ShieldCheck, FolderKanban, BarChart3, HeartPulse } from "lucide-react";
 import { ThemeToggle } from "../features/theme/ThemeToggle";
 
 const navItems = [
@@ -10,9 +10,9 @@ const navItems = [
   { icon: ShieldCheck, label: "Proposals", path: "/proposals" },
   { icon: Database, label: "Memory", path: "/memory" },
   { icon: FileCode2, label: "Knowledge", path: "/knowledge" },
-  { icon: Activity, label: "Projects", path: "/projects" },
-  { icon: Activity, label: "Analytics", path: "/analytics" },
-  { icon: Activity, label: "Health Check", path: "/health" },
+  { icon: FolderKanban, label: "Projects", path: "/projects" },
+  { icon: BarChart3, label: "Analytics", path: "/analytics" },
+  { icon: HeartPulse, label: "Health Check", path: "/health" },
 ];
 
 export default function AppShell() {

@@ -59,11 +59,15 @@ function ProposalRow({
   actions?: ReactNode;
 }) {
   const reasons = parseReasons(proposal.risk_reasons);
+  const displayName = proposal.resource_name || `${proposal.resource_type} / ${proposal.resource_id}`;
 
   return (
     <div className="grid grid-cols-[1.4fr_1fr_1fr_auto] gap-4 border-b border-border px-4 py-3 last:border-b-0">
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-foreground">
+          {displayName}
+        </div>
+        <div className="mt-1 truncate text-xs text-muted-foreground">
           {proposal.resource_type} / {proposal.resource_id}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">{proposal.proposal_type}</div>
