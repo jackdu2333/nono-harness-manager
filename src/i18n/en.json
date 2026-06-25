@@ -1,0 +1,37 @@
+{
+  "skills": {
+    "title": "Skills Management",
+    "description": "Manage and scan your local prompts, scripts, and workflows.",
+    "sources_title": "Skill Sources",
+    "no_sources": "No sources configured. Add one above.",
+    "add_source": "Add",
+    "discover_default": "Discover Local Skills",
+    "scan": "Scan",
+    "name_placeholder": "Name (e.g. My Prompts)",
+    "path_placeholder": "Absolute Path (e.g. /Users/jackdu/prompts)",
+    "search_placeholder": "Search skills...",
+    "no_skills": "No skills found. Try scanning a source.",
+    "name": "Name",
+    "type": "Type",
+    "path": "Path",
+    "status": "Status",
+    "open": "Open",
+    "copy_path": "Copy Path"
+  },
+  "agents": {
+    "title": "Agents",
+    "description": "Discover and manage your local autonomous agents.",
+    "scan_dir": "Scan Dir",
+    "path_placeholder": "Path to scan (e.g. ~/.gemini)",
+    "search_placeholder": "Search agents...",
+    "no_agents": "No agents registered yet. Try scanning your computer.",
+    "app_path": "App Path",
+    "config_path": "Config Path",
+    "launch_command": "Launch Command",
+    "remove_record": "Remove Record",
+    "remove_hint": "This only removes the record from Harness, it does not delete your Agent files."
+  },
+  "common": {
+    "unknown": "Unknown"
+  }
+}

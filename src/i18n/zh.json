@@ -1,0 +1,59 @@
+{
+  "skills": {
+    "title": "技能管理",
+    "description": "管理并扫描您本地的提示词、脚本与工作流。",
+    "sources_title": "技能资源库",
+    "no_sources": "尚未配置资源库，请在上方添加。",
+    "add_source": "添加",
+    "discover_default": "自动发现本地技能",
+    "scan": "扫描",
+    "name_placeholder": "名称 (如：我的提示词)",
+    "path_placeholder": "绝对路径 (如：/Users/jackdu/prompts)",
+    "search_placeholder": "搜索技能...",
+    "no_skills": "没有找到技能。请尝试扫描资源库。",
+    "name": "名称",
+    "type": "类型",
+    "path": "路径",
+    "status": "状态",
+    "open": "打开",
+    "copy_path": "复制路径"
+  },
+  "agents": {
+    "title": "智能体 (Agents)",
+    "description": "发现和管理您本地的自治智能体。",
+    "scan_dir": "扫描目录",
+    "path_placeholder": "要扫描的路径 (如：~/.gemini)",
+    "search_placeholder": "搜索智能体...",
+    "no_agents": "尚未登记任何智能体。请尝试扫描您的电脑。",
+    "app_path": "主路径 (App Path)",
+    "config_path": "配置路径 (Config Path)",
+    "launch_command": "启动命令",
+    "remove_record": "移除记录",
+    "remove_hint": "此操作仅从台账中移除记录，不会删除您的物理文件。"
+  },
+  "common": {
+    "unknown": "未知"
+  },
+  "mcp": {
+    "title": "MCP 服务器",
+    "description": "管理您的 Model Context Protocol 集成与本地资源",
+    "path_placeholder": "输入目录路径以扫描 MCP 项目...",
+    "scan_dir": "扫描目录",
+    "auto_discover": "自动发现系统配置",
+    "search_placeholder": "按名称、描述或分类过滤...",
+    "no_servers": "未发现 MCP 服务器",
+    "no_servers_desc": "扫描本地目录或从系统配置中自动发现以添加 MCP 服务器。",
+    "select_prompt": "从列表中选择一个 MCP 服务器以查看详情。",
+    "uncategorized": "未分类",
+    "no_description": "未提供关于此 MCP 服务器的描述。",
+    "launch_config": "启动配置",
+    "command": "命令",
+    "args": "参数",
+    "env": "环境变量",
+    "source": "来源路径",
+    "open_dir": "打开所在目录",
+    "remove": "移除记录",
+    "remove_confirm": "您确定要移除这个 MCP 服务器记录吗？",
+    "remove_hint": "移除记录仅从数据库中删除，不会影响您的本地文件。"
+  }
+}
