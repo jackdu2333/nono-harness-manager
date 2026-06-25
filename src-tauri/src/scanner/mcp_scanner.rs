@@ -54,7 +54,17 @@ pub fn scan_mcp_in_dir(path: &str) -> Vec<McpServer> {
                                 for (name, config) in mcp_servers {
                                     let command = config.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
                                     let args = config.get("args").map(|v| v.to_string());
-                                    let env = config.get("env").map(|v| v.to_string());
+                                    let env = config.get("env").map(|v| {
+                                        if let Value::Object(map) = v {
+                                            let mut masked = serde_json::Map::new();
+                                            for (k, _) in map {
+                                                masked.insert(k.clone(), Value::String("***".to_string()));
+                                            }
+                                            serde_json::to_string(&Value::Object(masked)).unwrap_or_default()
+                                        } else {
+                                            v.to_string()
+                                        }
+                                    });
                                     
                                     if !command.is_empty() {
                                         discovered.push(McpServer {
@@ -108,7 +118,17 @@ pub fn discover_system_mcp() -> Vec<McpServer> {
                     for (name, config) in mcp_servers {
                         let command = config.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
                         let args = config.get("args").map(|v| v.to_string());
-                        let env = config.get("env").map(|v| v.to_string());
+                        let env = config.get("env").map(|v| {
+                            if let Value::Object(map) = v {
+                                let mut masked = serde_json::Map::new();
+                                for (k, _) in map {
+                                    masked.insert(k.clone(), Value::String("***".to_string()));
+                                }
+                                serde_json::to_string(&Value::Object(masked)).unwrap_or_default()
+                            } else {
+                                v.to_string()
+                            }
+                        });
                         
                         if !command.is_empty() {
                             // Extract app name from path roughly

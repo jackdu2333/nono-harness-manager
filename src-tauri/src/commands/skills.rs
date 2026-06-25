@@ -34,6 +34,16 @@ pub async fn add_skill_source(
         path
     };
 
+    // Safety Path Guard
+    let home_dir_str = dirs::home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+    if expanded_path == "/" 
+        || expanded_path == home_dir_str 
+        || expanded_path.contains("/.ssh") 
+        || expanded_path.contains("/.gnupg") 
+    {
+        return Err("Security Error: Scanning this directory is prohibited.".to_string());
+    }
+
     // Check if a source with this path already exists
     let existing_sources = source_repository::list_sources(&*pool).await.map_err(|e| e.to_string())?;
     if let Some(mut existing) = existing_sources.into_iter().find(|s| s.path == expanded_path) {

@@ -5,6 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { X, Folder, Link as LinkIcon, Edit2, RefreshCw, Wand2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSkillsStore } from '../store';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface SkillDetailProps {
   skill: Skill | null;
@@ -27,7 +30,12 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   if (!skill) return null;
 
   const handleOpenFolder = async () => {
-    // Will be implemented shortly
+    if (!skill) return;
+    try {
+      await revealItemInDir(skill.path);
+    } catch (e) {
+      console.error("Failed to open folder:", e);
+    }
   };
 
   const handleCopyPath = () => {
@@ -45,10 +53,6 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     if (skill.description_is_manual === 1) {
       const confirm = window.confirm("当前描述为您手动编辑的，重新提取将覆盖您的手动描述。确定要继续吗？");
       if (!confirm) return;
-      // In a real implementation we might want an explicit reset endpoint, 
-      // but for now we can just trigger a scan and rely on future logic, 
-      // or we can set it to blank first. Actually, we should call a backend API to reset.
-      // Let's just alert for now.
       alert("请清空描述后再扫描，或等待后台提供专门的重置接口。");
       return;
     }
@@ -109,8 +113,10 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           ) : (
             <div className="bg-card rounded-lg p-3 border border-border shadow-sm">
               {skill.description ? (
-                <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                  {skill.description}
+                <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {skill.description}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground italic py-2">

@@ -17,11 +17,15 @@ pub fn scan_directory(source: &SkillSource) -> Vec<Skill> {
                     let path_str = entry.path().to_string_lossy().to_string();
                     log::info!("Inspecting file: {}", path_str);
                     
-                    // Only consider explicit skill definition files
-                    if file_name == "skill.yaml" || file_name == "skill.json" || file_name == "skill.md" {
+                    // Consider explicit skill definition files, READMEs, and script tools
+                    if file_name == "skill.yaml" || file_name == "skill.json" || file_name == "skill.md" || file_name == "readme.md" {
                         log::info!("Discovered skill entry: {}", path_str);
                         let skill_type = if file_name.ends_with(".md") { "Prompt" } else { "Standard" };
                         discovered_skills.push(create_skill(source, entry.path(), skill_type));
+                    } else if (file_name.ends_with(".py") || file_name.ends_with(".sh") || file_name.ends_with(".js") || file_name.ends_with(".ts")) 
+                        && (file_name.contains("prompt") || file_name.contains("workflow") || file_name.contains("agent") || file_name.contains("tool")) {
+                        log::info!("Discovered script skill: {}", path_str);
+                        discovered_skills.push(create_skill(source, entry.path(), "Script"));
                     }
                 }
             }

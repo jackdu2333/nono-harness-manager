@@ -14,7 +14,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
+            tauri::async_runtime::block_on(async move {
                 match db::init_db(&handle).await {
                     Ok(pool) => {
                         handle.manage(pool);

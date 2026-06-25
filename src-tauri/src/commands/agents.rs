@@ -91,17 +91,35 @@ pub async fn launch_agent(id: String, pool: State<'_, SqlitePool>) -> Result<(),
     let agents = agent_repository::list_agents(&*pool).await.map_err(|e| e.to_string())?;
     let agent = agents.into_iter().find(|a| a.id == id).ok_or("Agent not found")?;
     
+    // Prefer safe open via app_path
+    if let Some(app_path) = &agent.app_path {
+        if app_path.ends_with(".app") || std::path::Path::new(app_path).exists() {
+            std::process::Command::new("open")
+                .arg(app_path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch agent: {}", e))?;
+            return Ok(());
+        }
+    }
+    
     if let Some(cmd) = agent.launch_command {
-        // Execute the command in the background
-        std::process::Command::new("sh")
-            .arg("-c")
-            .arg(&cmd)
-            .spawn()
-            .map_err(|e| format!("Failed to launch agent: {}", e))?;
-            
-        // TODO: Update launch_count and last_launched_at in DB
+        // Safe whitelist approach: Only allow 'open'
+        let parts: Vec<&str> = cmd.split_whitespace().collect();
+        if parts.is_empty() {
+            return Err("Empty launch command".to_string());
+        }
+        
+        let program = parts[0];
+        if program == "open" {
+            std::process::Command::new("open")
+                .args(&parts[1..])
+                .spawn()
+                .map_err(|e| format!("Failed to launch agent: {}", e))?;
+        } else {
+            return Err("Security Error: Arbitrary shell commands are blocked. Only 'open' is allowed.".to_string());
+        }
     } else {
-        return Err("No launch command configured for this agent".to_string());
+        return Err("No launch command or app_path configured for this agent".to_string());
     }
     
     Ok(())
