@@ -29,7 +29,7 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
     set({ isLoading: true });
     try {
       const rawAgents = await api.listAgents();
-      
+     
       // Load custom sort order
       let savedOrder: string[] = [];
       try {
@@ -55,6 +55,8 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
       });
 
       set({ agents });
+    } catch (err) {
+      console.error('Failed to fetch agents:', err);
     } finally {
       set({ isLoading: false });
     }
@@ -92,6 +94,9 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
       const count = await api.scanAgentsInDir(path);
       await get().fetchAgents();
       return count;
+    } catch (err) {
+      console.error('Failed to scan agents:', err);
+      throw err;
     } finally {
       set({ isScanning: false });
     }
@@ -103,17 +108,29 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
       const count = await api.scanSystemAgents();
       await get().fetchAgents();
       return count;
+    } catch (err) {
+      console.error('Failed to scan system agents:', err);
+      throw err;
     } finally {
       set({ isScanning: false });
     }
   },
 
   launchAgent: async (id) => {
-    await api.launchAgent(id);
-    await get().fetchAgents();
+    try {
+      await get().fetchAgents();
+    } catch (err) {
+      console.error('Failed to launch agent:', err);
+      throw err;
+    }
   },
 
   openConfigDir: async (id) => {
-    await api.openConfigDir(id);
+    try {
+      await api.openConfigDir(id);
+    } catch (err) {
+      console.error('Failed to open config dir:', err);
+      throw err;
+    }
   }
 }));

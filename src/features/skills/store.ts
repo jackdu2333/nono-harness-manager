@@ -39,7 +39,11 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     const source = await api.addSkillSource(name, path, sourceType, scanDepth);
     await get().fetchSources();
     if (source && source.id) {
-      await get().scanSource(source.id);
+      try {
+        await get().scanSource(source.id);
+      } catch (scanErr) {
+        console.error('Source added but scan failed:', scanErr);
+      }
     }
   },
 
@@ -54,6 +58,9 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       const count = await api.scanSkillSource(id);
       await get().fetchSkills();
       return count;
+    } catch (err) {
+      console.error('Failed to scan skill source:', err);
+      throw err;
     } finally {
       set({ isScanning: false });
     }
