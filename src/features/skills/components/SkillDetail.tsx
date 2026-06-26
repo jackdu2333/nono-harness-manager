@@ -41,6 +41,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     updateDescription, scanSource, isScanning,
     setCategory, setStatus, toggleFavorite, toggleNeedsReview, toggleNeedsImprovement,
     archive, deleteIndex, updateImprovementNote, updateReviewNote, recordUsage,
+    deleteSourceFile,
     duplicateAssignment, duplicateReasons, markDuplicate,
   } = useSkillsStore();
 
@@ -52,6 +53,11 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   const [editImproveStatus, setEditImproveStatus] = useState('');
   const [editReviewNote, setEditReviewNote] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRemoveIndexDialog, setShowRemoveIndexDialog] = useState(false);
+  const [showSourceDeleteDialog, setShowSourceDeleteDialog] = useState(false);
+  const [sourceDeleteMode, setSourceDeleteMode] = useState<'trash' | 'permanent'>('trash');
+  const [sourceDeleteConfirmName, setSourceDeleteConfirmName] = useState('');
+  const [sourceDeleteError, setSourceDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (skill) {
@@ -130,10 +136,38 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   };
   // §五 删除索引：通过 Dialog 明确确认（替代二次点击按钮），确认后执行
   const handleDelete = async () => {
-    await recordUsage(skill.id, 'delete_index');
+    await recordUsage(skill.id, 'remove_index');
     await deleteIndex(skill.id);
-    setShowDeleteDialog(false);
+    setShowRemoveIndexDialog(false);
     onClose();
+  };
+
+  // 子需求 §一.3/§四: 删除本地源文件 — trash 优先，permanent 需要输入名称确认
+  const handleDeleteSourceFile = async () => {
+    setSourceDeleteError(null);
+    if (sourceDeleteMode === 'permanent' && sourceDeleteConfirmName !== skill.name) {
+      setSourceDeleteError(`请输入 Skill 名称 "${skill.name}" 以确认永久删除`);
+      return;
+    }
+    try {
+      await recordUsage(
+        skill.id,
+        sourceDeleteMode === 'trash' ? 'move_source_to_trash' : 'delete_source_file',
+      );
+      await deleteSourceFile(skill.id, sourceDeleteMode);
+      setShowSourceDeleteDialog(false);
+      setSourceDeleteConfirmName('');
+      onClose();
+    } catch (e) {
+      setSourceDeleteError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const openSourceDelete = (mode: 'trash' | 'permanent') => {
+    setSourceDeleteMode(mode);
+    setSourceDeleteConfirmName('');
+    setSourceDeleteError(null);
+    setShowSourceDeleteDialog(true);
   };
 
   const getSourceLabel = (src: string | null) => {
@@ -433,31 +467,102 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
           </div>
         </div>
 
-        {/* §五 Delete index — Dialog confirm (replaces two-step click) */}
+        {/* 子需求 §七: 三层操作 — 归档 / 移除索引 / 删除本地源文件 */}
         <div className="pt-4 border-t border-border">
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="w-4 h-4" />
-            删除 Harness 索引
-          </Button>
+          <div className="text-xs text-muted-foreground/80 mb-2 font-medium">高级操作</div>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-muted-foreground"
+              onClick={() => setShowRemoveIndexDialog(true)}
+            >
+              <Archive className="w-4 h-4" />
+              从 Harness 移除索引
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-destructive hover:bg-destructive/5"
+              onClick={() => openSourceDelete('trash')}
+            >
+              <Trash2 className="w-4 h-4" />
+              删除本地源文件（移到废纸篓）
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full gap-1 text-xs text-muted-foreground/60 hover:text-destructive"
+              onClick={() => openSourceDelete('permanent')}
+            >
+              永久删除本地文件
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* §五 Delete confirm Dialog — makes the consequence explicit */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* 移除索引确认 Dialog */}
+      <Dialog open={showRemoveIndexDialog} onOpenChange={setShowRemoveIndexDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>删除 Harness 索引</DialogTitle>
+            <DialogTitle>从 Harness 移除索引</DialogTitle>
             <DialogDescription>
-              仅删除 Harness 索引，不删除本地文件。下次扫描可能重新出现。
+              仅删除 Harness 中的索引记录，本地文件仍然存在。下次扫描可能重新出现。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>取消</Button>
+            <Button variant="ghost" onClick={() => setShowRemoveIndexDialog(false)}>取消</Button>
             <Button variant="destructive" onClick={handleDelete}>确认删除索引</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除本地源文件确认 Dialog — 子需求 §五 */}
+      <Dialog open={showSourceDeleteDialog} onOpenChange={setShowSourceDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除本地 Skill 文件？</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  此操作会{sourceDeleteMode === 'trash' ? '将本地源文件移到废纸篓' : '永久删除本地源文件'}，
+                  并从 Harness 索引中移除。删除后该 Skill 不会在下次扫描中重新出现。
+                </p>
+                <div className="rounded border border-border bg-muted/40 p-3 text-sm space-y-1">
+                  <div><span className="text-muted-foreground">Skill 名称：</span>{skill.name}</div>
+                  <div><span className="text-muted-foreground">删除路径：</span><code className="text-xs">{skill.path}</code></div>
+                  <div>
+                    <span className="text-muted-foreground">是否可恢复：</span>
+                    {sourceDeleteMode === 'trash' ? '移到废纸篓' : '永久删除，无法通过 Harness 恢复'}
+                  </div>
+                </div>
+                {sourceDeleteMode === 'permanent' && (
+                  <div>
+                    <label className="text-xs text-muted-foreground">
+                      请输入 Skill 名称 <code className="font-semibold">{skill.name}</code> 以确认：
+                    </label>
+                    <input
+                      value={sourceDeleteConfirmName}
+                      onChange={(e) => setSourceDeleteConfirmName(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                      placeholder={skill.name}
+                    />
+                  </div>
+                )}
+                {sourceDeleteError && (
+                  <div className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {sourceDeleteError}
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowSourceDeleteDialog(false)}>取消</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSourceFile}
+            >
+              {sourceDeleteMode === 'trash' ? '移到废纸篓' : '永久删除'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

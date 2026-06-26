@@ -2,9 +2,10 @@ use crate::db::repositories::{skill_repository, source_repository};
 use crate::models::skill::Skill;
 use crate::models::source::SkillSource;
 use crate::scanner::skill_scanner::scan_directory;
-use crate::security::path_guard::validate_scan_root;
+use crate::security::path_guard::{validate_scan_root, validate_delete_target, is_skill_directory};
 use chrono::Utc;
 use sqlx::SqlitePool;
+use std::path::{Path, PathBuf};
 use tauri::{command, State};
 use uuid::Uuid;
 
@@ -333,6 +334,7 @@ pub async fn record_skill_usage(
     const PANEL_ACTIONS: &[&str] = &[
         "view_detail", "copy_path", "open_dir", "copy_ref",
         "edit_description", "set_category", "set_status", "archive", "delete_index",
+        "remove_index", "delete_source_file", "move_source_to_trash",
         "toggle_favorite", "toggle_needs_review", "toggle_needs_improvement",
         "update_improvement_note", "update_review_note",
     ];
@@ -371,4 +373,156 @@ pub async fn record_skill_usage(
     .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+// ===== Skill source file deletion (子需求 skill删除需求.md) =====
+
+/// Delete the local source file or directory for a Skill, then remove the
+/// Harness index. 子需求 §四 / §三.
+///
+/// mode: "trash" (move to Trash) or "permanent" (rm -rf / unlink).
+/// First phase implements "permanent" with clear UI; trash is preferred but
+/// requires platform APIs — implemented if available, falls back to permanent.
+///
+/// Safety: uses validate_delete_target with all authorized skill_source paths.
+/// If file deletion fails, the index is NOT removed. 子需求 §八.5.
+#[derive(serde::Serialize)]
+pub struct DeleteSourceResult {
+    pub deleted_path: String,
+    pub deleted_type: String, // "file" or "directory"
+    pub mode: String,
+    pub index_removed: bool,
+}
+
+#[command]
+pub async fn delete_skill_source_file(
+    skill_id: String,
+    mode: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<DeleteSourceResult, String> {
+    if mode != "trash" && mode != "permanent" {
+        return Err(format!("unsupported delete mode: {mode} (expected 'trash' or 'permanent')"));
+    }
+
+    // Fetch skill to get its path.
+    let skills = skill_repository::list_skills(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    let skill = skills
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or("Skill not found")?;
+
+    // Fetch all authorized source roots.
+    let sources = source_repository::list_sources(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    let authorized_roots: Vec<String> = sources
+        .iter()
+        .filter(|s| s.enabled == 1)
+        .map(|s| s.path.clone())
+        .collect();
+
+    // Determine deletion target: prefer the Skill directory, fall back to entry_file.
+    let skill_path = PathBuf::from(&skill.path);
+    let target = determine_delete_target(&skill_path)?;
+    let target_str = target.to_string_lossy().to_string();
+
+    // Strict validation — rejects symlinks, sensitive dirs, unauthorized paths.
+    let validated = validate_delete_target(&target_str, &authorized_roots)?;
+
+    let deleted_type = if validated.is_dir() { "directory" } else { "file" };
+
+    // Perform deletion.
+    perform_delete(&validated, &mode)?;
+
+    // Record usage BEFORE removing the index row. 子需求 §六/§八.10
+    let action = if mode == "trash" { "move_source_to_trash" } else { "delete_source_file" };
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO resource_usage_events
+            (id, resource_type, resource_id, action, source, created_at)
+        VALUES (?, 'skill', ?, ?, 'harness_panel', ?)
+        "#,
+    )
+    .bind(Uuid::new_v4().to_string())
+    .bind(&skill_id)
+    .bind(action)
+    .bind(&now)
+    .execute(&*pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Remove the index only after successful file deletion. 子需求 §八.4/§八.5
+    sqlx::query("DELETE FROM skills WHERE id = ?")
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(DeleteSourceResult {
+        deleted_path: validated.to_string_lossy().to_string(),
+        deleted_type: deleted_type.to_string(),
+        mode: if mode == "trash" { "trash".to_string() } else { "permanent".to_string() },
+        index_removed: true,
+    })
+}
+
+/// Determine what to delete: if the skill's parent dir is a standard Skill
+/// directory, delete the whole directory. Otherwise delete only the entry
+/// file. 子需求 §二.
+fn determine_delete_target(skill_path: &Path) -> Result<PathBuf, String> {
+    // If the path itself is a directory (e.g. a skill folder), check it.
+    if skill_path.is_dir() {
+        if is_skill_directory(skill_path) {
+            return Ok(skill_path.to_path_buf());
+        }
+        return Err("目标是目录但不是标准 Skill 目录，拒绝整目录删除".to_string());
+    }
+
+    // It's a file — check if parent is a Skill directory.
+    if let Some(parent) = skill_path.parent() {
+        if is_skill_directory(parent) {
+            // Prefer deleting the whole Skill directory.
+            return Ok(parent.to_path_buf());
+        }
+    }
+
+    // Fall back to the entry file itself.
+    Ok(skill_path.to_path_buf())
+}
+
+/// Perform the actual deletion. trash mode tries macOS Trash via NSWorkspace,
+/// falling back to permanent if unavailable.
+fn perform_delete(path: &Path, mode: &str) -> Result<(), String> {
+    if mode == "trash" {
+        // Try macOS Trash via AppleScript (move to Finder Trash).
+        let script = format!(
+            "tell application \"Finder\" to delete (POSIX file \"{}\" as alias)",
+            path.to_string_lossy()
+        );
+        let result = std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => return Ok(()),
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                log::warn!("Trash via AppleScript failed ({}), falling back to permanent", stderr.trim());
+            }
+            Err(e) => {
+                log::warn!("osascript unavailable ({}), falling back to permanent", e);
+            }
+        }
+    }
+
+    // Permanent deletion.
+    if path.is_dir() {
+        std::fs::remove_dir_all(path).map_err(|e| format!("删除目录失败: {}", e))
+    } else {
+        std::fs::remove_file(path).map_err(|e| format!("删除文件失败: {}", e))
+    }
 }

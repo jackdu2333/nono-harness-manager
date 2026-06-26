@@ -60,6 +60,21 @@ export async function deleteSkillIndex(skillId: string): Promise<void> {
   return invoke('delete_skill_index', { skillId });
 }
 
+export interface DeleteSourceResult {
+  deleted_path: string;
+  deleted_type: string;
+  mode: string;
+  index_removed: boolean;
+}
+
+/** Delete the local source file/directory and remove the Harness index. 子需求 §四 */
+export async function deleteSkillSourceFile(
+  skillId: string,
+  mode: 'trash' | 'permanent',
+): Promise<DeleteSourceResult> {
+  return invoke('delete_skill_source_file', { skillId, mode });
+}
+
 export async function updateImprovementNote(
   skillId: string,
   note: string | null,

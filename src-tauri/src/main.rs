@@ -51,6 +51,7 @@ fn main() {
             commands::skills::update_review_note,
             commands::skills::mark_duplicate,
             commands::skills::record_skill_usage,
+            commands::skills::delete_skill_source_file,
             commands::agents::list_agents,
             commands::agents::add_agent,
             commands::agents::delete_agent,

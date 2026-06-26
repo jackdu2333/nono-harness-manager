@@ -30,6 +30,7 @@ interface SkillsState {
   toggleNeedsImprovement: (skillId: string, value: boolean) => Promise<void>;
   archive: (skillId: string, archived: boolean) => Promise<void>;
   deleteIndex: (skillId: string) => Promise<void>;
+  deleteSourceFile: (skillId: string, mode: 'trash' | 'permanent') => Promise<void>;
   updateImprovementNote: (skillId: string, note: string | null, status: string | null) => Promise<void>;
   updateReviewNote: (skillId: string, note: string | null) => Promise<void>;
   markDuplicate: (skillId: string, groupId: string | null) => Promise<void>;
@@ -140,6 +141,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   },
   deleteIndex: async (skillId) => {
     await api.deleteSkillIndex(skillId);
+    await get().fetchSkills();
+  },
+  deleteSourceFile: async (skillId, mode) => {
+    await api.deleteSkillSourceFile(skillId, mode);
     await get().fetchSkills();
   },
   updateImprovementNote: async (skillId, note, status) => {
