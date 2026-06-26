@@ -3,6 +3,7 @@ import AppShell from "./AppShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import SkillsPage from "../pages/Skills";
+import DashboardPage from "../pages/Dashboard";
 import AgentsPage from "../pages/Agents";
 import SettingsPage from "../pages/Settings";
 import ProposalsPage from "../pages/Proposals";
@@ -25,7 +26,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<AppShell />}>
-        <Route index element={<ErrorBoundary><Placeholder title="Dashboard" /></ErrorBoundary>} />
+        <Route index element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
         <Route path="agents" element={<ErrorBoundary><AgentsPage /></ErrorBoundary>} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="mcp" element={<McpPage />} />
