@@ -27,7 +27,7 @@ export default function SkillsPage() {
         <SummaryChips />
         
         <div className="flex-1 min-h-0 p-4 lg:p-6 overflow-hidden flex flex-col">
-          <SkillList onSelectSkill={(skill) => setSelectedSkillId(skill.id)} globalFilter={globalFilter} />
+          <SkillList onSelectSkill={(skill) => setSelectedSkillId(skill.id)} selectedSkillId={selectedSkillId} globalFilter={globalFilter} />
         </div>
       </div>
       

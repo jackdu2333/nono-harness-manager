@@ -14,9 +14,11 @@ const columnHelper = createColumnHelper<Skill>();
 
 export function SkillList({
   onSelectSkill,
+  selectedSkillId,
   globalFilter
 }: {
   onSelectSkill: (skill: Skill) => void;
+  selectedSkillId?: string | null;
   globalFilter: string;
 }) {
   const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons, recordUsage } = useSkillsStore();
@@ -140,7 +142,11 @@ export function SkillList({
           {table.getRowModel().rows.map(row => (
             <tr
               key={row.id}
-              className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
+              className={`border-b border-border/50 cursor-pointer transition-colors ${
+                selectedSkillId === row.original.id
+                  ? 'bg-accent/60 shadow-[inset_3px_0_0_0_hsl(var(--foreground))] '
+                  : 'hover:bg-muted/50'
+              }`}
               onClick={() => {
                 // §一/§八：打开详情是最基础的面板操作，必须计入 usage
                 recordUsage(row.original.id, 'view_detail');
