@@ -7,8 +7,10 @@ interface SkillsState {
   sources: SkillSource[];
   skills: Skill[];
   currentView: SkillView;
-  sourceFilter: string | null;
-  categoryFilter: string | null;
+  sourceFilter: string[];
+  clientFilter: string[];
+  categoryFilter: string[];
+  statusFilter: string[];
   /** Suspected-duplicate assignment from rule-based detector (§七). In-memory only. */
   duplicateAssignment: Record<string, string>;
   duplicateReasons: Record<string, string[]>;
@@ -24,8 +26,10 @@ interface SkillsState {
   generateDescription: (skillId: string) => Promise<string>;
   updateDescription: (skillId: string, description: string) => Promise<void>;
   setView: (view: SkillView) => void;
-  setSourceFilter: (sourceId: string | null) => void;
-  setCategoryFilter: (category: string | null) => void;
+  setSourceFilter: (sourceIds: string[]) => void;
+  setClientFilter: (clients: string[]) => void;
+  setCategoryFilter: (categories: string[]) => void;
+  setStatusFilter: (statuses: string[]) => void;
   // Curation actions (§五) — each refreshes the list for consistency
   setCategory: (skillId: string, category: string | null) => Promise<void>;
   setStatus: (skillId: string, status: string) => Promise<void>;
@@ -45,8 +49,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   sources: [],
   skills: [],
   currentView: 'all',
-  sourceFilter: null,
-  categoryFilter: null,
+  sourceFilter: [],
+  clientFilter: [],
+  categoryFilter: [],
+  statusFilter: [],
   duplicateAssignment: {},
   duplicateReasons: {},
   isLoadingSources: false,
@@ -120,8 +126,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   },
 
   setView: (view) => set({ currentView: view }),
-  setSourceFilter: (sourceId) => set({ sourceFilter: sourceId }),
-  setCategoryFilter: (category) => set({ categoryFilter: category }),
+  setSourceFilter: (sourceIds) => set({ sourceFilter: sourceIds }),
+  setClientFilter: (clients) => set({ clientFilter: clients }),
+  setCategoryFilter: (categories) => set({ categoryFilter: categories }),
+  setStatusFilter: (statuses) => set({ statusFilter: statuses }),
 
   setCategory: async (skillId, category) => {
     await api.setSkillCategory(skillId, category);

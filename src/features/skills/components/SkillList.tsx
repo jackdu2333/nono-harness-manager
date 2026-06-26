@@ -9,6 +9,7 @@ import {
   getFilteredRowModel,
 } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
+import { getCompatibleClient, getFriendlySourceName } from '../utils/clientMatcher';
 
 const columnHelper = createColumnHelper<Skill>();
 
@@ -21,7 +22,19 @@ export function SkillList({
   selectedSkillId?: string | null;
   globalFilter: string;
 }) {
-  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons, recordUsage, sources, sourceFilter, categoryFilter } = useSkillsStore();
+  const {
+    skills,
+    fetchSkills,
+    currentView,
+    duplicateAssignment,
+    duplicateReasons,
+    recordUsage,
+    sources,
+    sourceFilter,
+    clientFilter,
+    categoryFilter,
+    statusFilter
+  } = useSkillsStore();
   const { t } = useTranslation();
 
   // Build source lookup map for display
@@ -87,13 +100,18 @@ export function SkillList({
       header: '来源',
       cell: info => {
         const sourceId = info.getValue();
-        const name = sourceId ? sourceMap.get(sourceId) ?? '-' : '-';
-        return <span className="text-xs text-muted-foreground whitespace-nowrap">{name}</span>;
+        const rawName = sourceId ? sourceMap.get(sourceId) ?? '-' : '-';
+        const friendlyName = rawName !== '-' ? getFriendlySourceName(rawName) : '-';
+        return <span className="text-xs text-muted-foreground whitespace-nowrap">{friendlyName}</span>;
       },
     }),
     columnHelper.accessor('category', {
       header: '分类',
-      cell: info => <span className="text-xs text-muted-foreground whitespace-nowrap truncate max-w-[100px] block">{info.getValue() || '未分类'}</span>,
+      cell: info => (
+        <span className="text-xs text-muted-foreground whitespace-nowrap truncate max-w-[120px] block">
+          {info.getValue() || '未分类'}
+        </span>
+      ),
     }),
     columnHelper.accessor('updated_at', {
       header: 'Updated',
@@ -123,15 +141,25 @@ export function SkillList({
       default: result = active; break;
     }
 
-    if (sourceFilter) {
-      result = result.filter((s) => s.source_id === sourceFilter);
+    if (sourceFilter.length > 0) {
+      result = result.filter((s) => s.source_id && sourceFilter.includes(s.source_id));
     }
-    if (categoryFilter) {
-      result = result.filter((s) => s.category === categoryFilter);
+    if (clientFilter.length > 0) {
+      result = result.filter((s) => {
+        const src = sources.find((x) => x.id === s.source_id);
+        const clientName = getCompatibleClient(s, src ? src.name : '');
+        return clientFilter.includes(clientName);
+      });
+    }
+    if (categoryFilter.length > 0) {
+      result = result.filter((s) => s.category && categoryFilter.includes(s.category));
+    }
+    if (statusFilter.length > 0) {
+      result = result.filter((s) => statusFilter.includes(s.status));
     }
 
     return result;
-  }, [skills, currentView, duplicateAssignment, sourceFilter, categoryFilter]);
+  }, [skills, currentView, duplicateAssignment, sourceFilter, clientFilter, categoryFilter, statusFilter, sources]);
 
   const table = useReactTable({
     data: viewFiltered,
@@ -144,27 +172,38 @@ export function SkillList({
   });
 
   return (
-    <div className="h-full overflow-auto bg-card border border-border rounded-lg shadow-sm">
+    <div className="h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] bg-card border border-border rounded-lg shadow-sm">
       <table className="w-full text-sm text-left table-fixed">
         <colgroup>
-          <col className="w-auto" />
-          <col className="w-[100px]" />
-          <col className="w-[110px]" />
-          <col className="w-[90px]" />
+          <col style={{ minWidth: '520px' }} />
+          <col style={{ width: '110px' }} />
+          <col style={{ width: '120px' }} />
+          <col style={{ width: '110px' }} />
         </colgroup>
         <thead className="text-xs text-muted-foreground bg-background sticky top-0 z-10 shadow-sm border-b border-border">
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
-                <th key={header.id} className="px-4 py-3 font-medium border-b border-border/50">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                </th>
-              ))}
+              {headerGroup.headers.map(header => {
+                const id = header.column.id;
+                const widthClass = 
+                  id === 'name' ? 'min-w-[520px]' :
+                  id === 'source_id' ? 'w-[110px]' :
+                  id === 'category' ? 'w-[120px]' :
+                  id === 'updated_at' ? 'w-[110px]' : '';
+                return (
+                  <th
+                    key={header.id}
+                    className={`px-4 py-3 font-medium border-b border-border/50 ${widthClass}`}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
@@ -182,11 +221,19 @@ export function SkillList({
                 onSelectSkill(row.original);
               }}
             >
-              {row.getVisibleCells().map(cell => (
-                <td key={cell.id} className="px-4 py-3 align-top">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
+              {row.getVisibleCells().map(cell => {
+                const id = cell.column.id;
+                const widthClass = 
+                  id === 'name' ? 'min-w-[520px]' :
+                  id === 'source_id' ? 'w-[110px]' :
+                  id === 'category' ? 'w-[120px]' :
+                  id === 'updated_at' ? 'w-[110px]' : '';
+                return (
+                  <td key={cell.id} className={`px-4 py-3 align-top ${widthClass}`}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           {table.getRowModel().rows.length === 0 && (

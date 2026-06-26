@@ -42,9 +42,9 @@ export function SkillSourcesDrawer() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" className="border-border text-muted-foreground hover:text-foreground bg-card gap-2 shrink-0 shadow-sm transition-all hover:shadow">
-          <Settings className="w-4 h-4" />
-          管理资源库 ({sources.length})
+        <Button variant="outline" className="h-9 border-border text-muted-foreground hover:text-foreground bg-card hover:bg-muted gap-2 shrink-0 shadow-sm transition-all text-sm">
+          <Settings className="w-4 h-4 text-muted-foreground" />
+          资源库（{sources.length}）
         </Button>
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[500px] bg-background/95 backdrop-blur-xl border-l border-border/40 text-foreground flex flex-col p-0 shadow-2xl">
