@@ -119,11 +119,6 @@ export function PinnedAgentsBar({ agents }: Props) {
   const reorderAgents = useAgentsStore(s => s.reorderAgents);
   const [activeId, setActiveId] = useState<string | null>(null);
   
-  if (agents.length === 0) return null;
-
-  // Max 3 agents as requested
-  const displayAgents = agents.slice(0, 3);
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -141,7 +136,12 @@ export function PinnedAgentsBar({ agents }: Props) {
     }
   };
 
+  // Max 3 agents as requested
+  const displayAgents = agents.slice(0, 3);
+
   const activeAgent = activeId ? displayAgents.find(a => a.id === activeId) : null;
+
+  if (agents.length === 0) return null;
 
   return (
     <div className="px-6 py-3 border-b border-border bg-card/30 shrink-0 relative z-20">
