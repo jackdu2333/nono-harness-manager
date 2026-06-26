@@ -15,45 +15,23 @@ pub async fn insert_skill(pool: &SqlitePool, skill: &Skill) -> Result<(), sqlx::
         .await?;
 
     if let Some(existing_skill) = existing {
-        let is_manual = existing_skill.description_is_manual.unwrap_or(0) == 1;
-
-        let (final_desc, final_desc_src, final_desc_conf, final_desc_upd, final_desc_manual) =
-            if is_manual {
-                (
-                    existing_skill.description,
-                    existing_skill.description_source,
-                    existing_skill.description_confidence,
-                    existing_skill.description_updated_at,
-                    existing_skill.description_is_manual,
-                )
-            } else {
-                (
-                    skill.description.clone(),
-                    skill.description_source.clone(),
-                    skill.description_confidence.clone(),
-                    skill.description_updated_at.clone(),
-                    skill.description_is_manual,
-                )
-            };
-
+        // Scan should NEVER overwrite user/AI-curated metadata.
+        // Only update file-level physical attributes (name, type, executable,
+        // last_modified) that come from the filesystem. All metadata fields
+        // (description, category, tags, summary, confidence, lifecycle flags,
+        // improvement/review notes, etc.) are preserved from the existing row.
         sqlx::query(
             r#"
             UPDATE skills SET
-                name = ?, skill_type = ?, is_executable = ?, last_modified_at = ?, updated_at = ?,
-                description = ?, description_source = ?, description_confidence = ?, description_updated_at = ?, description_is_manual = ?
+                name = ?, skill_type = ?, is_executable = ?, last_modified_at = ?, updated_at = ?
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(&skill.name)
         .bind(&skill.skill_type)
         .bind(skill.is_executable)
         .bind(&skill.last_modified_at)
         .bind(&skill.updated_at)
-        .bind(&final_desc)
-        .bind(&final_desc_src)
-        .bind(&final_desc_conf)
-        .bind(&final_desc_upd)
-        .bind(final_desc_manual)
         .bind(&existing_skill.id)
         .execute(pool)
         .await?;
