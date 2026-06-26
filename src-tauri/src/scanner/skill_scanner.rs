@@ -39,6 +39,12 @@ pub fn scan_directory(source: &SkillSource) -> Vec<Skill> {
                             || file_name.contains("agent")
                             || file_name.contains("tool"))
                     {
+                        // Only accept scripts that sit directly in a Skill root
+                        // directory. Scripts in subdirectories like scripts/ are
+                        // auxiliary files, not standalone skills.
+                        if !is_skill_root_script(entry.path()) {
+                            continue;
+                        }
                         log::info!("Discovered script skill: {}", path_str);
                         discovered_skills.push(create_skill(source, entry.path(), "Script"));
                     }
@@ -51,6 +57,40 @@ pub fn scan_directory(source: &SkillSource) -> Vec<Skill> {
     }
 
     discovered_skills
+}
+
+/// Check if a script file sits directly in a Skill root directory (the parent
+/// dir contains a skill definition file). Rejects scripts nested inside
+/// subdirectories like scripts/, src/, lib/, bin/ etc.
+fn is_skill_root_script(path: &Path) -> bool {
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => return false,
+    };
+
+    // Reject well-known non-skill subdirectories.
+    let dir_name = parent
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    const SUBDIRECTORIES: &[&str] = &[
+        "scripts", "src", "lib", "bin", "test", "tests", "__pycache__",
+        "node_modules", "dist", "build", "examples", "docs", "assets",
+    ];
+    if SUBDIRECTORIES.contains(&dir_name.as_str()) {
+        return false;
+    }
+
+    // Parent must contain at least one skill definition file to qualify.
+    const SKILL_INDICATORS: &[&str] = &[
+        "skill.yaml",
+        "skill.json",
+        "skill.md",
+        "SKILL.md",
+        "readme.md",
+        "README.md",
+    ];
+    SKILL_INDICATORS.iter().any(|name| parent.join(name).exists())
 }
 
 use crate::scanner::description_extractor::extract_skill_description;
@@ -141,5 +181,43 @@ mod tests {
         let skill = create_skill(&source, Path::new("/tmp/skills/demo/SKILL.md"), "Prompt");
 
         assert_eq!(skill.entry_file.as_deref(), Some("SKILL.md"));
+    }
+}
+
+#[cfg(test)]
+mod root_script_tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn rejects_scripts_in_subdirectory() {
+        let tmp = std::env::temp_dir().join("harness_scanner_test_subdir");
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join("my-skill").join("scripts")).unwrap();
+        fs::write(tmp.join("my-skill").join("SKILL.md"), "# My Skill").unwrap();
+        fs::write(
+            tmp.join("my-skill").join("scripts").join("tool_helper.ts"),
+            "// helper",
+        )
+        .unwrap();
+
+        let script_in_subdir = tmp.join("my-skill").join("scripts").join("tool_helper.ts");
+        assert!(!is_skill_root_script(&script_in_subdir));
+    }
+
+    #[test]
+    fn accepts_script_in_skill_root() {
+        let tmp = std::env::temp_dir().join("harness_scanner_test_root");
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join("my-skill")).unwrap();
+        fs::write(tmp.join("my-skill").join("SKILL.md"), "# My Skill").unwrap();
+        fs::write(
+            tmp.join("my-skill").join("prompt_tool.ts"),
+            "// standalone tool",
+        )
+        .unwrap();
+
+        let script_in_root = tmp.join("my-skill").join("prompt_tool.ts");
+        assert!(is_skill_root_script(&script_in_root));
     }
 }
