@@ -10,6 +10,7 @@ import { Skill } from '../types';
  *   3. Description similarity (token Jaccard)
  *   4. Same category + overlapping name keywords
  *   5. README.md and skill.md both detected as separate skills
+ *   6. Chinese-aware: CJK bigram similarity + weak-suffix stripping
  */
 
 export interface DuplicateGroup {
@@ -25,6 +26,12 @@ export interface DuplicateResult {
   /** skillId -> human-readable reasons */
   reasons: Record<string, string[]>;
 }
+
+/** Weak suffixes to strip before Chinese name comparison (§四). */
+const WEAK_NAME_SUFFIXES = [
+  '生成', '整理', '工具', '脚本', '助手', '模板', '管理', '管理器', '面板',
+  'generator', 'tool', 'helper', 'manager', 'panel', 'template',
+];
 
 function normalizeName(s: string): string {
   return s
@@ -53,6 +60,37 @@ function parentDir(path: string): string {
 function baseName(path: string): string {
   const idx = path.lastIndexOf('/');
   return idx >= 0 ? path.slice(idx + 1) : path;
+}
+
+/** Strip weak suffixes so "知识卡片生成" vs "知识卡片整理" compare equal. */
+function stripWeakSuffix(name: string): string {
+  let result = name;
+  for (const suffix of WEAK_NAME_SUFFIXES) {
+    if (result.toLowerCase().endsWith(suffix)) {
+      result = result.slice(0, result.length - suffix.length);
+      break;
+    }
+  }
+  return result.trim();
+}
+
+/** Extract CJK bigrams for Chinese-aware similarity (§四). */
+function cjkBigrams(s: string): Set<string> {
+  // CJK Unified Ideographs range
+  const cjkFiltered = s.replace(/[^\u4e00-\u9fff]/g, '');
+  const bigrams = new Set<string>();
+  for (let i = 0; i < cjkFiltered.length - 1; i++) {
+    bigrams.add(cjkFiltered.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+/** Check if one name contains the other after weak-suffix stripping. */
+function nameContains(a: string, b: string): boolean {
+  const sa = stripWeakSuffix(a);
+  const sb = stripWeakSuffix(b);
+  if (sa.length < 2 || sb.length < 2) return false;
+  return sa !== sb && (sa.includes(sb) || sb.includes(sa));
 }
 
 /** Trivial union-find over skill ids. */
@@ -111,6 +149,27 @@ export function detectDuplicates(skills: Skill[]): DuplicateResult {
         }
       }
 
+      // Rule 1b (§四): name containment after weak-suffix strip
+      if (!isDup && nameContains(a.name, b.name)) {
+        isDup = true;
+        addReason(a.id, '名称包含关系');
+        addReason(b.id, '名称包含关系');
+      }
+
+      // Rule 1c (§四): CJK bigram similarity for Chinese names
+      if (!isDup) {
+        const ba = cjkBigrams(a.name);
+        const bb = cjkBigrams(b.name);
+        if (ba.size >= 2 && bb.size >= 2) {
+          const bigramSim = jaccard(ba, bb);
+          if (bigramSim >= 0.65) {
+            isDup = true;
+            addReason(a.id, `中文名称相似 ${Math.round(bigramSim * 100)}%`);
+            addReason(b.id, `中文名称相似 ${Math.round(bigramSim * 100)}%`);
+          }
+        }
+      }
+
       // Rule 2 & 5: same directory (esp. README + skill.md double detection)
       const da = parentDir(a.path);
       const db = parentDir(b.path);
@@ -126,16 +185,22 @@ export function detectDuplicates(skills: Skill[]): DuplicateResult {
         addReason(b.id, r);
       }
 
-      // Rule 3: description similarity
+      // Rule 3: description similarity (token Jaccard, §四 also adds CJK bigrams)
       if (
         a.description && b.description &&
         a.description.length > 10 && b.description.length > 10
       ) {
-        const sim = jaccard(tokens(a.description), tokens(b.description));
-        if (sim >= 0.6) {
+        const tokenSim = jaccard(tokens(a.description), tokens(b.description));
+        const baDesc = cjkBigrams(a.description);
+        const bbDesc = cjkBigrams(b.description);
+        const bigramSim = baDesc.size >= 3 && bbDesc.size >= 3
+          ? jaccard(baDesc, bbDesc)
+          : 0;
+        const bestSim = Math.max(tokenSim, bigramSim);
+        if (bestSim >= 0.6) {
           isDup = true;
-          addReason(a.id, `描述相似 ${Math.round(sim * 100)}%`);
-          addReason(b.id, `描述相似 ${Math.round(sim * 100)}%`);
+          addReason(a.id, `描述相似 ${Math.round(bestSim * 100)}%`);
+          addReason(b.id, `描述相似 ${Math.round(bestSim * 100)}%`);
         }
       }
 

@@ -101,7 +101,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     setIsEditingCategory(false);
   };
   const handleSetStatus = async (s: string) => {
-    recordUsage(skill.id, 'set_status');
+    await recordUsage(skill.id, 'set_status');
     await setStatus(skill.id, s);
   };
   const handleToggleFav = async () => {
@@ -117,7 +117,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
     await toggleNeedsImprovement(skill.id, skill.needs_improvement !== 1);
   };
   const handleArchive = async () => {
-    recordUsage(skill.id, 'archive');
+    await recordUsage(skill.id, 'archive');
     await archive(skill.id, skill.is_archived !== 1);
   };
   const handleSaveImprove = async () => {
@@ -130,7 +130,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
   };
   // §五 删除索引：通过 Dialog 明确确认（替代二次点击按钮），确认后执行
   const handleDelete = async () => {
-    recordUsage(skill.id, 'delete_index');
+    await recordUsage(skill.id, 'delete_index');
     await deleteIndex(skill.id);
     setShowDeleteDialog(false);
     onClose();

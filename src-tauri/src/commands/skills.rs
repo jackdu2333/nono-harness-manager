@@ -337,7 +337,10 @@ pub async fn record_skill_usage(
         "update_improvement_note", "update_review_note",
     ];
     if !PANEL_ACTIONS.contains(&action.as_str()) {
-        log::warn!("Unknown panel action '{}' — recorded but not in PANEL_ACTIONS", action);
+        return Err(format!(
+            "unknown panel action '{}': allowed actions are {:?}",
+            action, PANEL_ACTIONS
+        ));
     }
 
     let now = Utc::now().to_rfc3339();

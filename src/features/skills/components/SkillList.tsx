@@ -41,12 +41,20 @@ export function SkillList({
               {skill.needs_improvement === 1 && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">待进化</span>
               )}
-              {duplicateAssignment[skill.id] && (
+              {skill.duplicate_group_id && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                  title="已保存的重复标记（持久化，不会因刷新消失）"
+                >
+                  已标记重复
+                </span>
+              )}
+              {!skill.duplicate_group_id && duplicateAssignment[skill.id] && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                  title={`实时检测（未保存，刷新或规则变化可能改变）${dupReason?.length ? ' · 命中：' + dupReason.join('、') : ''}`}
+                  title={`实时疑似重复（未保存，刷新或规则变化可能改变）${dupReason?.length ? ' · 命中：' + dupReason.join('、') : ''}`}
                 >
-                  疑似重复
+                  实时疑似重复
                 </span>
               )}
             </div>

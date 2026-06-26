@@ -33,7 +33,7 @@ interface SkillsState {
   updateImprovementNote: (skillId: string, note: string | null, status: string | null) => Promise<void>;
   updateReviewNote: (skillId: string, note: string | null) => Promise<void>;
   markDuplicate: (skillId: string, groupId: string | null) => Promise<void>;
-  recordUsage: (skillId: string, action: string) => void;
+  recordUsage: (skillId: string, action: string) => Promise<void>;
 }
 
 export const useSkillsStore = create<SkillsState>((set, get) => ({
@@ -155,15 +155,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     await get().fetchSkills();
   },
   recordUsage: (skillId, action) => {
-    // Fire-and-forget: panel-operation log for Analytics. §八
-    // Pinned to source='harness_panel' on the backend — NOT a Codex count.
-    // §六 标准 action 命名（禁止漂移，为 Analytics 打基础）：
-    //   核心: view_detail | copy_path | open_dir | copy_ref | edit_description |
-    //         set_category | set_status | archive | delete_index
-    //   标记: toggle_favorite | toggle_needs_review | toggle_needs_improvement |
-    //         update_improvement_note | update_review_note
-    api.recordSkillUsage(skillId, action).catch((e) =>
-      console.error('Failed to record skill usage:', e),
-    );
+    // §八: Returns a promise so high-risk callers (archive/delete_index/set_status)
+    // can await before the main mutation. Low-risk callers may fire-and-forget.
+    return api.recordSkillUsage(skillId, action).catch((e) => {
+      console.error('Failed to record skill usage:', e);
+    });
   },
 }));
