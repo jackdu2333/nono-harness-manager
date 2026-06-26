@@ -1,16 +1,20 @@
 import { Skill } from '../types';
 
 /**
- * Rule-based duplicate detection (§七). First version: heuristics only,
- * no vector DB. Marks skills as *suspected* duplicates — NEVER auto-merges.
+ * Rule-based duplicate detection (§七). Heuristics only, no vector DB.
+ * Marks skills as *suspected* duplicates — NEVER auto-merges.
  *
- * Rules:
- *   1. Name similarity (normalized equality or high token overlap)
- *   2. Same-directory duplicate (two skills rooted in one folder)
- *   3. Description similarity (token Jaccard)
- *   4. Same category + overlapping name keywords
- *   5. README.md and skill.md both detected as separate skills
- *   6. Chinese-aware: CJK bigram similarity + weak-suffix stripping
+ * Convergence rules (v2): Only flag duplicates when two skills share the
+ * SAME source directory (same skill_source.id). The same Skill installed
+ * in multiple client directories (Codex / Claude / WorkBuddy) is expected
+ * multi-install behavior, NOT a duplicate.
+ *
+ * Additional rules within the same source:
+ *   1. Same name (exact match after normalization)
+ *   2. Same directory (README.md + SKILL.md double detection)
+ *   3. Name containment after weak-suffix strip (Chinese-aware)
+ *   4. CJK bigram similarity >= 0.85 (strict, was 0.65)
+ *   5. Description similarity >= 0.8 (strict, was 0.6) — only within same source
  */
 
 export interface DuplicateGroup {
@@ -21,23 +25,17 @@ export interface DuplicateGroup {
 
 export interface DuplicateResult {
   groups: DuplicateGroup[];
-  /** skillId -> groupId (only for skills in groups of size >= 2) */
   assignment: Record<string, string>;
-  /** skillId -> human-readable reasons */
   reasons: Record<string, string[]>;
 }
 
-/** Weak suffixes to strip before Chinese name comparison (§四). */
 const WEAK_NAME_SUFFIXES = [
   '生成', '整理', '工具', '脚本', '助手', '模板', '管理', '管理器', '面板',
   'generator', 'tool', 'helper', 'manager', 'panel', 'template',
 ];
 
 function normalizeName(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[-_.\s]+/g, '-')
-    .replace(/^-|-$/g, '');
+  return s.toLowerCase().replace(/[-_.\s]+/g, '-').replace(/^-|-$/g, '');
 }
 
 function tokens(s: string): Set<string> {
@@ -62,7 +60,6 @@ function baseName(path: string): string {
   return idx >= 0 ? path.slice(idx + 1) : path;
 }
 
-/** Strip weak suffixes so "知识卡片生成" vs "知识卡片整理" compare equal. */
 function stripWeakSuffix(name: string): string {
   let result = name;
   for (const suffix of WEAK_NAME_SUFFIXES) {
@@ -74,9 +71,7 @@ function stripWeakSuffix(name: string): string {
   return result.trim();
 }
 
-/** Extract CJK bigrams for Chinese-aware similarity (§四). */
 function cjkBigrams(s: string): Set<string> {
-  // CJK Unified Ideographs range
   const cjkFiltered = s.replace(/[^\u4e00-\u9fff]/g, '');
   const bigrams = new Set<string>();
   for (let i = 0; i < cjkFiltered.length - 1; i++) {
@@ -85,15 +80,13 @@ function cjkBigrams(s: string): Set<string> {
   return bigrams;
 }
 
-/** Check if one name contains the other after weak-suffix stripping. */
 function nameContains(a: string, b: string): boolean {
   const sa = stripWeakSuffix(a);
   const sb = stripWeakSuffix(b);
-  if (sa.length < 2 || sb.length < 2) return false;
+  if (sa.length < 3 || sb.length < 3) return false;
   return sa !== sb && (sa.includes(sb) || sb.includes(sa));
 }
 
-/** Trivial union-find over skill ids. */
 class UnionFind {
   parent = new Map<string, string>();
   find(x: string): string {
@@ -131,86 +124,69 @@ export function detectDuplicates(skills: Skill[]): DuplicateResult {
     for (let j = i + 1; j < active.length; j++) {
       const a = active[i];
       const b = active[j];
+
+      // Same-source gate: only compare skills from the same skill_source.
+      if (a.source_id !== b.source_id) continue;
+
       let isDup = false;
 
-      // Rule 1: name similarity
+      // Rule 1: exact name match
       const na = normalizeName(a.name);
       const nb = normalizeName(b.name);
       if (na.length > 0 && na === nb) {
         isDup = true;
         addReason(a.id, '名称相同');
         addReason(b.id, '名称相同');
-      } else if (na.length > 1 && nb.length > 1) {
-        const sim = jaccard(tokens(a.name), tokens(b.name));
-        if (sim >= 0.7) {
-          isDup = true;
-          addReason(a.id, `名称相似 ${Math.round(sim * 100)}%`);
-          addReason(b.id, `名称相似 ${Math.round(sim * 100)}%`);
-        }
       }
 
-      // Rule 1b (§四): name containment after weak-suffix strip
+      // Rule 2: same directory (README + SKILL.md double detection)
+      const da = parentDir(a.path);
+      const db = parentDir(b.path);
+      if (da.length > 0 && da === db) {
+        isDup = true;
+        const fa = baseName(a.path).toLowerCase();
+        const fb = baseName(b.path).toLowerCase();
+        const readmePair =
+          (fa.includes('readme') && fb.includes('skill.md')) ||
+          (fb.includes('readme') && fa.includes('skill.md'));
+        addReason(a.id, readmePair ? 'README.md 与 skill.md 重复识别' : '同目录重复');
+        addReason(b.id, readmePair ? 'README.md 与 skill.md 重复识别' : '同目录重复');
+      }
+
+      // Rule 3: name containment (strict, same source only)
       if (!isDup && nameContains(a.name, b.name)) {
         isDup = true;
         addReason(a.id, '名称包含关系');
         addReason(b.id, '名称包含关系');
       }
 
-      // Rule 1c (§四): CJK bigram similarity for Chinese names
+      // Rule 4: CJK bigram (strict 0.85, same source only)
       if (!isDup) {
         const ba = cjkBigrams(a.name);
         const bb = cjkBigrams(b.name);
         if (ba.size >= 2 && bb.size >= 2) {
           const bigramSim = jaccard(ba, bb);
-          if (bigramSim >= 0.65) {
+          if (bigramSim >= 0.85) {
             isDup = true;
-            addReason(a.id, `中文名称相似 ${Math.round(bigramSim * 100)}%`);
-            addReason(b.id, `中文名称相似 ${Math.round(bigramSim * 100)}%`);
+            addReason(a.id, `中文名称高度相似 ${Math.round(bigramSim * 100)}%`);
+            addReason(b.id, `中文名称高度相似 ${Math.round(bigramSim * 100)}%`);
           }
         }
       }
 
-      // Rule 2 & 5: same directory (esp. README + skill.md double detection)
-      const da = parentDir(a.path);
-      const db = parentDir(b.path);
-      if (da.length > 0 && da === db) {
-        const fa = baseName(a.path).toLowerCase();
-        const fb = baseName(b.path).toLowerCase();
-        const readmePair =
-          (fa.includes('readme') && fb.includes('skill.md')) ||
-          (fb.includes('readme') && fa.includes('skill.md'));
-        isDup = true;
-        const r = readmePair ? 'README.md 与 skill.md 疑似重复识别' : '同目录重复';
-        addReason(a.id, r);
-        addReason(b.id, r);
-      }
-
-      // Rule 3: description similarity (token Jaccard, §四 also adds CJK bigrams)
-      if (
-        a.description && b.description &&
-        a.description.length > 10 && b.description.length > 10
-      ) {
+      // Rule 5: description similarity (strict 0.8, same source only)
+      if (!isDup && a.description && b.description &&
+          a.description.length > 20 && b.description.length > 20) {
         const tokenSim = jaccard(tokens(a.description), tokens(b.description));
         const baDesc = cjkBigrams(a.description);
         const bbDesc = cjkBigrams(b.description);
-        const bigramSim = baDesc.size >= 3 && bbDesc.size >= 3
+        const bigramSim = baDesc.size >= 5 && bbDesc.size >= 5
           ? jaccard(baDesc, bbDesc)
           : 0;
-        const bestSim = Math.max(tokenSim, bigramSim);
-        if (bestSim >= 0.6) {
+        if (Math.max(tokenSim, bigramSim) >= 0.8) {
           isDup = true;
-          addReason(a.id, `描述相似 ${Math.round(bestSim * 100)}%`);
-          addReason(b.id, `描述相似 ${Math.round(bestSim * 100)}%`);
-        }
-      }
-
-      // Rule 4: same category + name keyword overlap
-      if (a.category && b.category && a.category === b.category) {
-        const sim = jaccard(tokens(a.name), tokens(b.name));
-        if (sim >= 0.5) {
-          isDup = true;
-          addReason(a.id, `同分类+名称重叠 ${Math.round(sim * 100)}%`);
-          addReason(b.id, `同分类+名称重叠 ${Math.round(sim * 100)}%`);
+          addReason(a.id, `描述高度相似 ${Math.round(Math.max(tokenSim, bigramSim) * 100)}%`);
+          addReason(b.id, `描述高度相似 ${Math.round(Math.max(tokenSim, bigramSim) * 100)}%`);
         }
       }
 
@@ -222,7 +198,6 @@ export function detectDuplicates(skills: Skill[]): DuplicateResult {
     }
   }
 
-  // Bucket by union root
   const buckets = new Map<string, string[]>();
   for (const id of inDup) {
     const root = uf.find(id);
@@ -233,18 +208,14 @@ export function detectDuplicates(skills: Skill[]): DuplicateResult {
   const groups: DuplicateGroup[] = [];
   const assignment: Record<string, string> = {};
   for (const [, ids] of buckets) {
-    if (ids.length < 2) continue; // singleton — not a duplicate
+    if (ids.length < 2) continue;
     const groupId = `dup-${ids[0].slice(0, 8)}`;
     const reasonSet = new Set<string>();
     for (const id of ids) {
       assignment[id] = groupId;
       reasons[id]?.forEach((r) => reasonSet.add(r));
     }
-    groups.push({
-      groupId,
-      reason: Array.from(reasonSet).join(' / '),
-      skillIds: ids,
-    });
+    groups.push({ groupId, reason: Array.from(reasonSet).join(' / '), skillIds: ids });
   }
 
   return {

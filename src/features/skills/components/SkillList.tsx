@@ -21,8 +21,15 @@ export function SkillList({
   selectedSkillId?: string | null;
   globalFilter: string;
 }) {
-  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons, recordUsage } = useSkillsStore();
+  const { skills, fetchSkills, currentView, duplicateAssignment, duplicateReasons, recordUsage, sources, sourceFilter, categoryFilter } = useSkillsStore();
   const { t } = useTranslation();
+
+  // Build source lookup map for display
+  const sourceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sources.forEach((src) => map.set(src.id, src.name));
+    return map;
+  }, [sources]);
 
   const columns = useMemo(() => [
     columnHelper.accessor('name', {
@@ -76,38 +83,55 @@ export function SkillList({
         );
       },
     }),
+    columnHelper.accessor('source_id', {
+      header: '来源',
+      cell: info => {
+        const sourceId = info.getValue();
+        const name = sourceId ? sourceMap.get(sourceId) ?? '-' : '-';
+        return <span className="text-xs text-muted-foreground whitespace-nowrap">{name}</span>;
+      },
+    }),
     columnHelper.accessor('category', {
       header: '分类',
-      cell: info => <span className="text-muted-foreground">{info.getValue() || '未分类'}</span>,
+      cell: info => <span className="text-xs text-muted-foreground whitespace-nowrap truncate max-w-[100px] block">{info.getValue() || '未分类'}</span>,
     }),
     columnHelper.accessor('updated_at', {
       header: 'Updated',
       cell: info => {
         const val = info.getValue();
-        return <span className="text-xs text-muted-foreground/80">{val ? new Date(val).toLocaleDateString() : '-'}</span>;
+        return <span className="text-xs text-muted-foreground/80 whitespace-nowrap">{val ? new Date(val).toLocaleDateString() : '-'}</span>;
       },
     }),
-  ], [t, duplicateAssignment, duplicateReasons]);
+  ], [t, duplicateAssignment, duplicateReasons, sourceMap]);
 
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
 
-  // Each "view" is just a filtered list — not a separate dashboard. §三
   const viewFiltered = useMemo(() => {
     const active = skills.filter((s) => s.is_archived === 0);
+    let result: Skill[];
     switch (currentView) {
-      case 'favorites': return active.filter((s) => s.is_favorite === 1);
-      case 'missing_description': return active.filter((s) => !s.description);
-      case 'uncategorized': return active.filter((s) => !s.category);
-      case 'needs_review': return active.filter((s) => s.needs_review === 1);
-      case 'needs_improvement': return active.filter((s) => s.needs_improvement === 1);
-      case 'duplicates': return active.filter((s) => !!duplicateAssignment[s.id]);
-      case 'archived': return skills.filter((s) => s.is_archived === 1);
+      case 'favorites': result = active.filter((s) => s.is_favorite === 1); break;
+      case 'missing_description': result = active.filter((s) => !s.description); break;
+      case 'uncategorized': result = active.filter((s) => !s.category); break;
+      case 'needs_review': result = active.filter((s) => s.needs_review === 1); break;
+      case 'needs_improvement': result = active.filter((s) => s.needs_improvement === 1); break;
+      case 'duplicates': result = active.filter((s) => !!duplicateAssignment[s.id]); break;
+      case 'archived': result = skills.filter((s) => s.is_archived === 1); break;
       case 'all':
-      default: return active;
+      default: result = active; break;
     }
-  }, [skills, currentView, duplicateAssignment]);
+
+    if (sourceFilter) {
+      result = result.filter((s) => s.source_id === sourceFilter);
+    }
+    if (categoryFilter) {
+      result = result.filter((s) => s.category === categoryFilter);
+    }
+
+    return result;
+  }, [skills, currentView, duplicateAssignment, sourceFilter, categoryFilter]);
 
   const table = useReactTable({
     data: viewFiltered,
@@ -121,7 +145,13 @@ export function SkillList({
 
   return (
     <div className="h-full overflow-auto bg-card border border-border rounded-lg shadow-sm">
-      <table className="w-full text-sm text-left">
+      <table className="w-full text-sm text-left table-fixed">
+        <colgroup>
+          <col className="w-auto" />
+          <col className="w-[100px]" />
+          <col className="w-[110px]" />
+          <col className="w-[90px]" />
+        </colgroup>
         <thead className="text-xs text-muted-foreground bg-background sticky top-0 z-10 shadow-sm border-b border-border">
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
@@ -148,13 +178,12 @@ export function SkillList({
                   : 'hover:bg-muted/50'
               }`}
               onClick={() => {
-                // §一/§八：打开详情是最基础的面板操作，必须计入 usage
                 recordUsage(row.original.id, 'view_detail');
                 onSelectSkill(row.original);
               }}
             >
               {row.getVisibleCells().map(cell => (
-                <td key={cell.id} className="px-4 py-3">
+                <td key={cell.id} className="px-4 py-3 align-top">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
