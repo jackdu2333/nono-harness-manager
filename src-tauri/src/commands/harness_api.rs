@@ -19,7 +19,6 @@ const SAFE_CONTEXT_FILES: &[&str] = &[
     "skill.json",
 ];
 
-
 #[command]
 pub async fn list_harness_resources(
     resource_type: Option<String>,
@@ -390,8 +389,6 @@ async fn get_mcp_context(
     })
 }
 
-
-
 struct SafeContentExcerpt {
     content: String,
     evidence_files: Vec<String>,
@@ -456,13 +453,8 @@ mod tests {
         });
         let settings = TrustPolicySettings::default();
 
-        let decision = assess_proposal_risk(
-            "skill",
-            "description_update",
-            &changes,
-            true,
-            &settings,
-        );
+        let decision =
+            assess_proposal_risk("skill", "description_update", &changes, true, &settings);
 
         assert_eq!(decision.risk_level, RiskLevel::High);
         assert!(!decision.can_auto_apply);
@@ -480,13 +472,8 @@ mod tests {
         });
         let settings = TrustPolicySettings::default();
 
-        let decision = assess_proposal_risk(
-            "skill",
-            "description_update",
-            &changes,
-            true,
-            &settings,
-        );
+        let decision =
+            assess_proposal_risk("skill", "description_update", &changes, true, &settings);
 
         assert_eq!(decision.risk_level, RiskLevel::Low);
         assert!(decision.can_auto_apply);

@@ -1609,6 +1609,11 @@ async fn record_inferred_event(
     let uuid_str = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
+    // P0-6: 限长 evidence 并对 metadata_json 做敏感字段脱敏
+    let safe_evidence = sanitize_evidence(&event.evidence);
+    let safe_metadata = event.metadata_json.as_deref().map(sanitize_metadata);
+    let safe_metadata_ref = safe_metadata.as_deref();
+
     sqlx::query(
         r#"
         INSERT INTO agent_resource_usage_events (
@@ -1629,37 +1634,86 @@ async fn record_inferred_event(
     .bind(&event.resource_name)
     .bind(&event.usage_kind)
     .bind(&event.confidence)
-    .bind(&event.evidence)
+    .bind(&safe_evidence)
     .bind(file_path)
     .bind(event.source_offset as i64)
     .bind(&event_hash)
     .bind(&event.event_time)
     .bind(&now)
-    .bind(&event.metadata_json)
+    .bind(safe_metadata_ref)
     .execute(pool)
     .await?;
 
-    // 2. Auto sync to skills.total_usage_count (only for high & medium confidence)
-    // 只针对 high 与 medium 置信度的事件，同步更新 skills 的物理字段
-    if event.resource_type == "skill"
-        && (event.confidence == "high" || event.confidence == "medium")
-    {
-        if let Some(ref res_id) = event.resource_id {
-            sqlx::query(
-                r#"
-                UPDATE skills
-                SET total_usage_count = total_usage_count + 1, last_used_at = ?
-                WHERE id = ?
-                "#,
-            )
-            .bind(&event.event_time)
-            .bind(res_id)
-            .execute(pool)
-            .await?;
-        }
-    }
+    // P0-7: 不再反写 skills.total_usage_count，日志推断统计与 Harness UI 管理操作分离
+    // Analytics 页面直接从 agent_resource_usage_events 实时聚合
 
     Ok(())
+}
+
+/// P0-6: 截断 evidence 到 500 字符上限，避免存储过长内容
+fn sanitize_evidence(text: &str) -> String {
+    const MAX_LEN: usize = 500;
+    if text.len() <= MAX_LEN {
+        return text.to_string();
+    }
+    let mut end = MAX_LEN;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}...", &text[..end])
+}
+
+/// P0-6: 对 metadata_json 中的敏感字段做脱敏，防止 token/key/secret 永久写入 SQLite
+fn sanitize_metadata(raw: &str) -> String {
+    if let Ok(mut val) = serde_json::from_str::<Value>(raw) {
+        redact_sensitive_fields(&mut val);
+        val.to_string()
+    } else {
+        // 非 JSON 直接截断
+        sanitize_evidence(raw)
+    }
+}
+
+/// 递归遍历 JSON 并替换敏感字段值为 [REDACTED]
+fn redact_sensitive_fields(val: &mut Value) {
+    const SENSITIVE_KEYS: &[&str] = &[
+        "token",
+        "key",
+        "secret",
+        "password",
+        "authorization",
+        "bearer",
+        "api_key",
+        "apikey",
+        "access_token",
+        "refresh_token",
+    ];
+    match val {
+        Value::Object(map) => {
+            let keys_to_redact: Vec<String> = map
+                .keys()
+                .filter(|k| {
+                    let k_lower = k.to_lowercase();
+                    SENSITIVE_KEYS.iter().any(|s| k_lower.contains(s))
+                })
+                .cloned()
+                .collect();
+            for key in keys_to_redact {
+                if let Some(v) = map.get_mut(&key) {
+                    *v = Value::String("[REDACTED]".to_string());
+                }
+            }
+            for (_, v) in map.iter_mut() {
+                redact_sensitive_fields(v);
+            }
+        }
+        Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                redact_sensitive_fields(v);
+            }
+        }
+        _ => {}
+    }
 }
 
 #[cfg(test)]

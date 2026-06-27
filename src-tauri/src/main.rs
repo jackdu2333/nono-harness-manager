@@ -83,6 +83,7 @@ fn main() {
             commands::local_assets::bind_project_resource,
             commands::local_assets::list_project_bindings,
             commands::local_assets::get_analytics_overview,
+            commands::local_assets::trigger_agent_log_scan,
             commands::local_assets::run_global_health_check,
             commands::local_assets::open_local_path,
         ])

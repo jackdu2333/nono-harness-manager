@@ -2,7 +2,7 @@ use crate::db::repositories::{skill_repository, source_repository};
 use crate::models::skill::Skill;
 use crate::models::source::SkillSource;
 use crate::scanner::skill_scanner::scan_directory;
-use crate::security::path_guard::{validate_scan_root, validate_delete_target, is_skill_directory};
+use crate::security::path_guard::{is_skill_directory, validate_delete_target, validate_scan_root};
 use chrono::Utc;
 use sqlx::SqlitePool;
 use std::path::{Path, PathBuf};
@@ -288,16 +288,14 @@ pub async fn update_review_note(
     pool: State<'_, SqlitePool>,
 ) -> Result<(), String> {
     let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE skills SET review_note = ?, reviewed_at = ?, updated_at = ? WHERE id = ?",
-    )
-    .bind(&note)
-    .bind(&now)
-    .bind(&now)
-    .bind(&skill_id)
-    .execute(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE skills SET review_note = ?, reviewed_at = ?, updated_at = ? WHERE id = ?")
+        .bind(&note)
+        .bind(&now)
+        .bind(&now)
+        .bind(&skill_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -332,11 +330,23 @@ pub async fn record_skill_usage(
     // §六 action 命名契约：保持稳定，为 Analytics 统计打基础。
     // 不在白名单的 action 仍记录，但打 warn 以暴露命名漂移。
     const PANEL_ACTIONS: &[&str] = &[
-        "view_detail", "copy_path", "open_dir", "copy_ref",
-        "edit_description", "set_category", "set_status", "archive", "delete_index",
-        "remove_index", "delete_source_file", "move_source_to_trash",
-        "toggle_favorite", "toggle_needs_review", "toggle_needs_improvement",
-        "update_improvement_note", "update_review_note",
+        "view_detail",
+        "copy_path",
+        "open_dir",
+        "copy_ref",
+        "edit_description",
+        "set_category",
+        "set_status",
+        "archive",
+        "delete_index",
+        "remove_index",
+        "delete_source_file",
+        "move_source_to_trash",
+        "toggle_favorite",
+        "toggle_needs_review",
+        "toggle_needs_improvement",
+        "update_improvement_note",
+        "update_review_note",
     ];
     if !PANEL_ACTIONS.contains(&action.as_str()) {
         return Err(format!(
@@ -401,7 +411,9 @@ pub async fn delete_skill_source_file(
     pool: State<'_, SqlitePool>,
 ) -> Result<DeleteSourceResult, String> {
     if mode != "trash" && mode != "permanent" {
-        return Err(format!("unsupported delete mode: {mode} (expected 'trash' or 'permanent')"));
+        return Err(format!(
+            "unsupported delete mode: {mode} (expected 'trash' or 'permanent')"
+        ));
     }
 
     // Fetch skill to get its path.
@@ -431,13 +443,21 @@ pub async fn delete_skill_source_file(
     // Strict validation — rejects symlinks, sensitive dirs, unauthorized paths.
     let validated = validate_delete_target(&target_str, &authorized_roots)?;
 
-    let deleted_type = if validated.is_dir() { "directory" } else { "file" };
+    let deleted_type = if validated.is_dir() {
+        "directory"
+    } else {
+        "file"
+    };
 
     // Perform deletion.
     perform_delete(&validated, &mode)?;
 
     // Record usage BEFORE removing the index row. 子需求 §六/§八.10
-    let action = if mode == "trash" { "move_source_to_trash" } else { "delete_source_file" };
+    let action = if mode == "trash" {
+        "move_source_to_trash"
+    } else {
+        "delete_source_file"
+    };
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
@@ -464,7 +484,11 @@ pub async fn delete_skill_source_file(
     Ok(DeleteSourceResult {
         deleted_path: validated.to_string_lossy().to_string(),
         deleted_type: deleted_type.to_string(),
-        mode: if mode == "trash" { "trash".to_string() } else { "permanent".to_string() },
+        mode: if mode == "trash" {
+            "trash".to_string()
+        } else {
+            "permanent".to_string()
+        },
         index_removed: true,
     })
 }
@@ -511,7 +535,10 @@ fn perform_delete(path: &Path, mode: &str) -> Result<(), String> {
             Ok(output) if output.status.success() => return Ok(()),
             Ok(output) => {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                log::warn!("Trash via AppleScript failed ({}), falling back to permanent", stderr.trim());
+                log::warn!(
+                    "Trash via AppleScript failed ({}), falling back to permanent",
+                    stderr.trim()
+                );
             }
             Err(e) => {
                 log::warn!("osascript unavailable ({}), falling back to permanent", e);

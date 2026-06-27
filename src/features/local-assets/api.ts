@@ -6,6 +6,7 @@ import type {
   HealthReport,
   ProjectBinding,
 } from './types';
+import type { ScanStatus } from './types';
 
 export async function listMemorySources(): Promise<AssetOverview[]> {
   return invoke('list_memory_sources');
@@ -72,6 +73,10 @@ export async function listProjectBindings(projectId: string): Promise<ProjectBin
 
 export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   return invoke('get_analytics_overview');
+}
+
+export async function triggerAgentLogScan(): Promise<ScanStatus> {
+  return invoke('trigger_agent_log_scan');
 }
 
 export async function runGlobalHealthCheck(): Promise<HealthReport> {

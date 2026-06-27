@@ -74,8 +74,19 @@ fn is_skill_root_script(path: &Path) -> bool {
         .map(|n| n.to_string_lossy().to_lowercase())
         .unwrap_or_default();
     const SUBDIRECTORIES: &[&str] = &[
-        "scripts", "src", "lib", "bin", "test", "tests", "__pycache__",
-        "node_modules", "dist", "build", "examples", "docs", "assets",
+        "scripts",
+        "src",
+        "lib",
+        "bin",
+        "test",
+        "tests",
+        "__pycache__",
+        "node_modules",
+        "dist",
+        "build",
+        "examples",
+        "docs",
+        "assets",
     ];
     if SUBDIRECTORIES.contains(&dir_name.as_str()) {
         return false;
@@ -90,7 +101,9 @@ fn is_skill_root_script(path: &Path) -> bool {
         "readme.md",
         "README.md",
     ];
-    SKILL_INDICATORS.iter().any(|name| parent.join(name).exists())
+    SKILL_INDICATORS
+        .iter()
+        .any(|name| parent.join(name).exists())
 }
 
 use crate::scanner::description_extractor::extract_skill_description;

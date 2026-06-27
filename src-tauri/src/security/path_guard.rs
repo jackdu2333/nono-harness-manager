@@ -115,8 +115,8 @@ pub fn validate_delete_target(
     let candidate = expand_home(target_input)?;
 
     // Reject symlinks — never resolve through them for deletion.
-    let metadata = std::fs::symlink_metadata(&candidate)
-        .map_err(|e| format!("无法访问删除目标: {}", e))?;
+    let metadata =
+        std::fs::symlink_metadata(&candidate).map_err(|e| format!("无法访问删除目标: {}", e))?;
     if metadata.file_type().is_symlink() {
         return Err("拒绝删除 symlink：请手动处理或先移除链接".to_string());
     }
@@ -199,14 +199,16 @@ mod delete_tests {
 
         assert!(validate_delete_target("/", &authorized).is_err());
         assert!(validate_delete_target(home.to_string_lossy().as_ref(), &authorized).is_err());
-        assert!(
-            validate_delete_target(home.join("Documents").to_string_lossy().as_ref(), &authorized)
-                .is_err()
-        );
-        assert!(
-            validate_delete_target(home.join("Desktop").to_string_lossy().as_ref(), &authorized)
-                .is_err()
-        );
+        assert!(validate_delete_target(
+            home.join("Documents").to_string_lossy().as_ref(),
+            &authorized
+        )
+        .is_err());
+        assert!(validate_delete_target(
+            home.join("Desktop").to_string_lossy().as_ref(),
+            &authorized
+        )
+        .is_err());
         assert!(
             validate_delete_target(home.join(".ssh").to_string_lossy().as_ref(), &authorized)
                 .is_err()

@@ -113,6 +113,14 @@ pub struct AnalyticsOverview {
     pub mcp_by_agent_matrix: Vec<MatrixCell>,
     pub recent_events: Vec<UsageEvent>,
     pub trends: UsageTrends,
+    pub scan_status: ScanStatus,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScanStatus {
+    pub status: String,
+    pub last_started_at: Option<String>,
+    pub last_finished_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -573,13 +581,37 @@ pub async fn list_project_bindings(
     Ok(bindings)
 }
 static IS_SCANNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static LAST_SCAN_STARTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static LAST_SCAN_FINISHED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// 获取当前扫描状态的快照
+fn current_scan_status() -> ScanStatus {
+    let running = IS_SCANNING.load(std::sync::atomic::Ordering::SeqCst);
+    let started_ts = LAST_SCAN_STARTED.load(std::sync::atomic::Ordering::SeqCst);
+    let finished_ts = LAST_SCAN_FINISHED.load(std::sync::atomic::Ordering::SeqCst);
+
+    let last_started_at = if started_ts > 0 {
+        chrono::DateTime::from_timestamp(started_ts as i64, 0).map(|t| t.to_rfc3339())
+    } else {
+        None
+    };
+    let last_finished_at = if finished_ts > 0 {
+        chrono::DateTime::from_timestamp(finished_ts as i64, 0).map(|t| t.to_rfc3339())
+    } else {
+        None
+    };
+
+    let status = if running { "running" } else { "idle" };
+    ScanStatus {
+        status: status.to_string(),
+        last_started_at,
+        last_finished_at,
+    }
+}
+
+/// P0-2: 独立的日志扫描触发命令，不混在 get_analytics_overview 里
 #[command]
-pub async fn get_analytics_overview(
-    pool: State<'_, SqlitePool>,
-) -> Result<AnalyticsOverview, String> {
-    // 异步触发旁路日志扫描，避免阻塞 Tauri IPC 主线程与前端渲染
-    // 使用 AtomicBool 排重防止并发冲突
+pub async fn trigger_agent_log_scan(pool: State<'_, SqlitePool>) -> Result<ScanStatus, String> {
     if IS_SCANNING
         .compare_exchange(
             false,
@@ -589,19 +621,36 @@ pub async fn get_analytics_overview(
         )
         .is_ok()
     {
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        LAST_SCAN_STARTED.store(now_ts, std::sync::atomic::Ordering::SeqCst);
+
         let pool_clone = (*pool).clone();
         tokio::spawn(async move {
-            log::info!("[Log Scanner] Starting background log scanning...");
+            log::info!("[Log Scanner] Background scan triggered by user...");
             if let Err(e) = crate::scanner::log_scanner::scan_all_logs(&pool_clone).await {
-                log::error!("[Log Scanner] Failed to background scan logs: {}", e);
+                log::error!("[Log Scanner] Background scan failed: {}", e);
             }
+            let fin_ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            LAST_SCAN_FINISHED.store(fin_ts, std::sync::atomic::Ordering::SeqCst);
             IS_SCANNING.store(false, std::sync::atomic::Ordering::SeqCst);
-            log::info!("[Log Scanner] Background log scanning finished.");
+            log::info!("[Log Scanner] Background scan finished.");
         });
     } else {
-        log::info!("[Log Scanner] A log scan is already running in background, skipping trigger.");
+        log::info!("[Log Scanner] Scan already running, ignoring trigger.");
     }
+    Ok(current_scan_status())
+}
 
+#[command]
+pub async fn get_analytics_overview(
+    pool: State<'_, SqlitePool>,
+) -> Result<AnalyticsOverview, String> {
     let mut resource_counts = HashMap::new();
     for (key, table) in [
         ("agents", "agents"),
@@ -632,6 +681,7 @@ pub async fn get_analytics_overview(
         mcp_by_agent_matrix: mcp_by_agent_matrix(&pool).await?,
         recent_events: recent_usage_events(&pool).await?,
         trends,
+        scan_status: current_scan_status(),
     })
 }
 
@@ -849,10 +899,12 @@ async fn usage_by_agent_client(pool: &SqlitePool) -> Result<Vec<UsageMetric>, St
 async fn usage_by_skill(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
     let rows = sqlx::query(
         r#"
-        SELECT resource_name as key, COUNT(*) as count
+        SELECT COALESCE(s.name, e.resource_name) as key, COUNT(*) as count
         FROM agent_resource_usage_events
-        WHERE resource_type = 'skill' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
-        GROUP BY resource_name
+        FROM agent_resource_usage_events e
+        LEFT JOIN skills s ON e.resource_id = s.id
+        WHERE e.resource_type = 'skill' AND e.event_source = 'log_inferred' AND e.confidence IN ('high', 'medium')
+        GROUP BY COALESCE(e.resource_id, e.resource_name)
         ORDER BY count DESC
         LIMIT 10
         "#
@@ -878,7 +930,7 @@ async fn usage_by_mcp_server(pool: &SqlitePool) -> Result<Vec<UsageMetric>, Stri
         WHERE e.resource_type IN ('mcp_server', 'mcp_tool')
           AND e.event_source = 'log_inferred'
           AND e.confidence IN ('high', 'medium')
-        GROUP BY e.resource_id
+        GROUP BY COALESCE(e.resource_id, e.resource_name)
         ORDER BY count DESC
         LIMIT 10
         "#,
@@ -921,10 +973,19 @@ async fn usage_by_mcp_tool(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String
 async fn skill_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, String> {
     let rows = sqlx::query(
         r#"
+        WITH top_skills AS (
+            SELECT COALESCE(resource_id, resource_name) as rk, COUNT(*) as total
+            FROM agent_resource_usage_events
+            WHERE resource_type = 'skill' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+            GROUP BY rk
+            ORDER BY total DESC
+            LIMIT 20
+        )
         SELECT agent_client as agent, resource_name as resource, COUNT(*) as count
         FROM agent_resource_usage_events
         WHERE resource_type = 'skill' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
-        GROUP BY agent_client, resource_id
+          AND COALESCE(resource_id, resource_name) IN (SELECT rk FROM top_skills)
+        GROUP BY agent_client, COALESCE(resource_id, resource_name)
         ORDER BY count DESC
         "#
     )
@@ -944,9 +1005,18 @@ async fn skill_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, Str
 async fn mcp_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, String> {
     let rows = sqlx::query(
         r#"
+        WITH top_mcp AS (
+            SELECT resource_name as rk, COUNT(*) as total
+            FROM agent_resource_usage_events
+            WHERE resource_type IN ('mcp_server', 'mcp_tool') AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+            GROUP BY resource_name
+            ORDER BY total DESC
+            LIMIT 20
+        )
         SELECT agent_client as agent, resource_name as resource, COUNT(*) as count
         FROM agent_resource_usage_events
         WHERE resource_type IN ('mcp_server', 'mcp_tool') AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+          AND resource_name IN (SELECT rk FROM top_mcp)
         GROUP BY agent_client, resource_name
         ORDER BY count DESC
         "#
@@ -967,7 +1037,7 @@ async fn mcp_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, Strin
 async fn get_weekly_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
     let rows = sqlx::query(
         r#"
-        SELECT strftime('%m-%d', event_time) as key, COUNT(*) as count
+        SELECT strftime('%Y-%m-%d', event_time) as key, COUNT(*) as count
         FROM agent_resource_usage_events
         WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') AND event_time >= datetime('now', '-7 days')
         GROUP BY key
@@ -989,7 +1059,7 @@ async fn get_weekly_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String>
 async fn get_monthly_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
     let rows = sqlx::query(
         r#"
-        SELECT strftime('%m-%d', event_time) as key, COUNT(*) as count
+        SELECT strftime('%Y-%m-%d', event_time) as key, COUNT(*) as count
         FROM agent_resource_usage_events
         WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') AND event_time >= datetime('now', '-30 days')
         GROUP BY key

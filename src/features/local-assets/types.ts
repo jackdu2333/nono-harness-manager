@@ -100,5 +100,11 @@ export interface AnalyticsOverview {
   mcp_by_agent_matrix: MatrixCell[];
   recent_events: UsageEvent[];
   trends: UsageTrends;
+  scan_status: ScanStatus;
 }
 
+export interface ScanStatus {
+  status: 'idle' | 'running' | 'failed';
+  last_started_at?: string | null;
+  last_finished_at?: string | null;
+}

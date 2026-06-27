@@ -10,8 +10,8 @@ import {
   ListOrdered 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getAnalyticsOverview } from '@/features/local-assets/api';
-import type { AnalyticsOverview, UsageMetric, MatrixCell } from '@/features/local-assets/types';
+import { getAnalyticsOverview, triggerAgentLogScan } from '@/features/local-assets/api';
+import type { AnalyticsOverview, UsageMetric, MatrixCell, ScanStatus } from '@/features/local-assets/types';
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
@@ -206,6 +206,30 @@ export default function AnalyticsPage() {
   }, []);
 
   const counts = overview?.resource_counts ?? {};
+  const scanStatus = overview?.scan_status;
+  const isScanning = scanStatus?.status === 'running';
+
+  const handleScan = async () => {
+    if (isScanning) return;
+    setError(null);
+    try {
+      await triggerAgentLogScan();
+      // 轮询等待扫描完成（最多 30 秒）
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        const latest = await getAnalyticsOverview();
+        if (latest.scan_status?.status !== 'running') {
+          setOverview(latest);
+          return;
+        }
+      }
+      // 超时也刷新一次
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      refresh();
+    }
+  };
 
   return (
     <div className="h-full overflow-auto bg-background p-6 space-y-6">
@@ -217,15 +241,26 @@ export default function AnalyticsPage() {
             Agent 日志推断统计
           </h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            系统通过对外部 Agent 客户端 (如 Antigravity, Codex) 的本地日志进行增量文件扫描,
-            结合置信度 (Confidence) 与哈希特征推断其真实的 Skill 与 MCP 资源使用频次。
-            本页面所有统计指标均为<strong className="text-foreground">可观测调用次数（日志推断）</strong>，不包含 Harness UI 主动管理操作。
+            系统通过扫描外部 Agent 客户端 (Codex / Antigravity / WorkBuddy / Newmax) 的本地日志，
+            推断 Skill 与 MCP 资源的可观测使用痕迹。
+            本页面所有统计指标均为<strong className="text-foreground">可观测调用次数（日志推断）</strong>，
+            不包含 Harness UI 主动管理操作。
           </p>
         </div>
-        <Button variant="outline" onClick={refresh} disabled={isLoading} className="flex-shrink-0">
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          触发 Agent 日志扫描
-        </Button>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {scanStatus && (
+            <span className="text-xs text-muted-foreground">
+              {isScanning ? '扫描中...' : scanStatus.last_finished_at ? `上次扫描: ${formatTime(scanStatus.last_finished_at)}` : '未扫描'}
+            </span>
+          )}
+          <Button variant="outline" onClick={handleScan} disabled={isScanning || isLoading} className="flex-shrink-0">
+            <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? '扫描中' : '扫描 Agent 日志'}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={refresh} disabled={isLoading} className="flex-shrink-0">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -354,4 +389,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-
