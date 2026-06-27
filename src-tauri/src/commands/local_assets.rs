@@ -87,11 +87,32 @@ pub struct ProjectBinding {
 }
 
 #[derive(Debug, Serialize)]
+pub struct UsageTrends {
+    pub week: Vec<UsageMetric>,
+    pub month: Vec<UsageMetric>,
+    pub year: Vec<UsageMetric>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MatrixCell {
+    pub agent: String,
+    pub resource: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
 pub struct AnalyticsOverview {
     pub resource_counts: HashMap<String, i64>,
     pub usage_by_resource_type: Vec<UsageMetric>,
     pub usage_by_action: Vec<UsageMetric>,
+    pub usage_by_agent_client: Vec<UsageMetric>,
+    pub usage_by_skill: Vec<UsageMetric>,
+    pub usage_by_mcp_server: Vec<UsageMetric>,
+    pub usage_by_mcp_tool: Vec<UsageMetric>,
+    pub skill_by_agent_matrix: Vec<MatrixCell>,
+    pub mcp_by_agent_matrix: Vec<MatrixCell>,
     pub recent_events: Vec<UsageEvent>,
+    pub trends: UsageTrends,
 }
 
 #[derive(Debug, Serialize)]
@@ -110,7 +131,9 @@ pub struct UsageEvent {
 }
 
 #[command]
-pub async fn list_memory_sources(pool: State<'_, SqlitePool>) -> Result<Vec<AssetOverview>, String> {
+pub async fn list_memory_sources(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<AssetOverview>, String> {
     let rows = sqlx::query(
         r#"
         SELECT id, name, path, memory_type, project_id, status, description, created_at, updated_at
@@ -248,7 +271,8 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
                 title: "记忆目录未标记类型".to_string(),
                 resource_name: Some(source.name.clone()),
                 resource_path: Some(path.to_string()),
-                description: "该目录可以扫描，但缺少长期记忆、项目记忆、临时记忆等类型标记。".to_string(),
+                description: "该目录可以扫描，但缺少长期记忆、项目记忆、临时记忆等类型标记。"
+                    .to_string(),
                 suggestion: "为记忆目录补充 memory_type，便于后续分类和项目绑定。".to_string(),
                 status: "open".to_string(),
             });
@@ -264,7 +288,8 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
                     title: "记忆文件偏大".to_string(),
                     resource_name: Some(file.name.clone()),
                     resource_path: Some(file.path.clone()),
-                    description: "单个记忆文件超过 1MB，后续给 AI 提供上下文时可能需要摘录或拆分。".to_string(),
+                    description: "单个记忆文件超过 1MB，后续给 AI 提供上下文时可能需要摘录或拆分。"
+                        .to_string(),
                     suggestion: "保留原文不变，另行创建摘要层或拆分结构化记忆。".to_string(),
                     status: "open".to_string(),
                 });
@@ -280,7 +305,8 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
                     resource_name: Some(name.clone()),
                     resource_path: Some(path.to_string()),
                     description: format!("同名文件出现 {count} 次，可能需要人工确认是否重复。"),
-                    suggestion: "在 Memory 页面定位同名文件，人工判断是否需要合并或改名。".to_string(),
+                    suggestion: "在 Memory 页面定位同名文件，人工判断是否需要合并或改名。"
+                        .to_string(),
                     status: "open".to_string(),
                 });
             }
@@ -435,9 +461,11 @@ pub async fn add_project(
     pool: State<'_, SqlitePool>,
 ) -> Result<AssetOverview, String> {
     let safe_path = match path {
-        Some(value) if !value.trim().is_empty() => {
-            Some(validate_scan_root(value.trim())?.to_string_lossy().to_string())
-        }
+        Some(value) if !value.trim().is_empty() => Some(
+            validate_scan_root(value.trim())?
+                .to_string_lossy()
+                .to_string(),
+        ),
         _ => None,
     };
     let now = Utc::now().to_rfc3339();
@@ -476,7 +504,9 @@ pub async fn bind_project_resource(
         resource_type.as_str(),
         "agent" | "skill" | "mcp_server" | "memory_source" | "knowledge_base"
     ) {
-        return Err(format!("unsupported project resource type: {resource_type}"));
+        return Err(format!(
+            "unsupported project resource type: {resource_type}"
+        ));
     }
     if !resource_exists(&pool, &resource_type, &resource_id).await? {
         return Err("resource does not exist".to_string());
@@ -542,11 +572,36 @@ pub async fn list_project_bindings(
 
     Ok(bindings)
 }
+static IS_SCANNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[command]
 pub async fn get_analytics_overview(
     pool: State<'_, SqlitePool>,
 ) -> Result<AnalyticsOverview, String> {
+    // 异步触发旁路日志扫描，避免阻塞 Tauri IPC 主线程与前端渲染
+    // 使用 AtomicBool 排重防止并发冲突
+    if IS_SCANNING
+        .compare_exchange(
+            false,
+            true,
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+        )
+        .is_ok()
+    {
+        let pool_clone = (*pool).clone();
+        tokio::spawn(async move {
+            log::info!("[Log Scanner] Starting background log scanning...");
+            if let Err(e) = crate::scanner::log_scanner::scan_all_logs(&pool_clone).await {
+                log::error!("[Log Scanner] Failed to background scan logs: {}", e);
+            }
+            IS_SCANNING.store(false, std::sync::atomic::Ordering::SeqCst);
+            log::info!("[Log Scanner] Background log scanning finished.");
+        });
+    } else {
+        log::info!("[Log Scanner] A log scan is already running in background, skipping trigger.");
+    }
+
     let mut resource_counts = HashMap::new();
     for (key, table) in [
         ("agents", "agents"),
@@ -559,11 +614,24 @@ pub async fn get_analytics_overview(
         resource_counts.insert(key.to_string(), count_table(&pool, table).await?);
     }
 
+    let trends = UsageTrends {
+        week: get_weekly_trend(&pool).await?,
+        month: get_monthly_trend(&pool).await?,
+        year: get_all_time_trend(&pool).await?,
+    };
+
     Ok(AnalyticsOverview {
         resource_counts,
         usage_by_resource_type: usage_group(&pool, "resource_type").await?,
         usage_by_action: usage_group(&pool, "action").await?,
+        usage_by_agent_client: usage_by_agent_client(&pool).await?,
+        usage_by_skill: usage_by_skill(&pool).await?,
+        usage_by_mcp_server: usage_by_mcp_server(&pool).await?,
+        usage_by_mcp_tool: usage_by_mcp_tool(&pool).await?,
+        skill_by_agent_matrix: skill_by_agent_matrix(&pool).await?,
+        mcp_by_agent_matrix: mcp_by_agent_matrix(&pool).await?,
         recent_events: recent_usage_events(&pool).await?,
+        trends,
     })
 }
 
@@ -735,10 +803,10 @@ async fn count_table(pool: &SqlitePool, table: &str) -> Result<i64, String> {
 async fn usage_group(pool: &SqlitePool, column: &str) -> Result<Vec<UsageMetric>, String> {
     let query = match column {
         "resource_type" => {
-            "SELECT resource_type as key, COUNT(*) as count FROM resource_usage_events GROUP BY resource_type ORDER BY count DESC"
+            "SELECT resource_type as key, COUNT(*) as count FROM agent_resource_usage_events WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') GROUP BY resource_type ORDER BY count DESC"
         }
         "action" => {
-            "SELECT action as key, COUNT(*) as count FROM resource_usage_events GROUP BY action ORDER BY count DESC"
+            "SELECT usage_kind as key, COUNT(*) as count FROM agent_resource_usage_events WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') GROUP BY usage_kind ORDER BY count DESC"
         }
         _ => return Err(format!("unsupported usage group column: {column}")),
     };
@@ -756,12 +824,282 @@ async fn usage_group(pool: &SqlitePool, column: &str) -> Result<Vec<UsageMetric>
         .collect())
 }
 
+async fn usage_by_agent_client(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT agent_client as key, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        GROUP BY agent_client
+        ORDER BY count DESC
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn usage_by_skill(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT resource_name as key, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE resource_type = 'skill' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        GROUP BY resource_name
+        ORDER BY count DESC
+        LIMIT 10
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn usage_by_mcp_server(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT COALESCE(ms.name, e.resource_name) as key, COUNT(*) as count
+        FROM agent_resource_usage_events e
+        LEFT JOIN mcp_servers ms ON e.resource_id = ms.id
+        WHERE e.resource_type IN ('mcp_server', 'mcp_tool')
+          AND e.event_source = 'log_inferred'
+          AND e.confidence IN ('high', 'medium')
+        GROUP BY e.resource_id
+        ORDER BY count DESC
+        LIMIT 10
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn usage_by_mcp_tool(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT resource_name as key, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE resource_type = 'mcp_tool' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        GROUP BY resource_name
+        ORDER BY count DESC
+        LIMIT 10
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn skill_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT agent_client as agent, resource_name as resource, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE resource_type = 'skill' AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        GROUP BY agent_client, resource_id
+        ORDER BY count DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| MatrixCell {
+            agent: row.get("agent"),
+            resource: row.get("resource"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn mcp_by_agent_matrix(pool: &SqlitePool) -> Result<Vec<MatrixCell>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT agent_client as agent, resource_name as resource, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE resource_type IN ('mcp_server', 'mcp_tool') AND event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        GROUP BY agent_client, resource_name
+        ORDER BY count DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| MatrixCell {
+            agent: row.get("agent"),
+            resource: row.get("resource"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn get_weekly_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT strftime('%m-%d', event_time) as key, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') AND event_time >= datetime('now', '-7 days')
+        GROUP BY key
+        ORDER BY key ASC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn get_monthly_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let rows = sqlx::query(
+        r#"
+        SELECT strftime('%m-%d', event_time) as key, COUNT(*) as count
+        FROM agent_resource_usage_events
+        WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium') AND event_time >= datetime('now', '-30 days')
+        GROUP BY key
+        ORDER BY key ASC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
+async fn get_all_time_trend(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
+    let span_row = sqlx::query(
+        "SELECT MIN(event_time) as min_t, MAX(event_time) as max_t FROM agent_resource_usage_events WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')"
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let min_t: Option<String> = span_row.get("min_t");
+    let max_t: Option<String> = span_row.get("max_t");
+
+    let format = match (min_t, max_t) {
+        (Some(min), Some(max)) => {
+            let min_date = chrono::DateTime::parse_from_rfc3339(&min)
+                .or_else(|_| chrono::DateTime::parse_from_str(&min, "%Y-%m-%dT%H:%M:%S%.fZ"));
+            let max_date = chrono::DateTime::parse_from_rfc3339(&max)
+                .or_else(|_| chrono::DateTime::parse_from_str(&max, "%Y-%m-%dT%H:%M:%S%.fZ"));
+            if let (Ok(d1), Ok(d2)) = (min_date, max_date) {
+                let days = (d2.signed_duration_since(d1)).num_days();
+                if days <= 90 {
+                    "%Y-%m-%d"
+                } else if days <= 730 {
+                    "%Y-%m"
+                } else {
+                    "%Y"
+                }
+            } else {
+                "%Y-%m-%d"
+            }
+        }
+        _ => "%Y-%m-%d",
+    };
+
+    let rows = match format {
+        "%Y-%m-%d" => {
+            sqlx::query(
+                r#"
+                SELECT strftime('%Y-%m-%d', event_time) as key, COUNT(*) as count
+                FROM agent_resource_usage_events
+                WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+                GROUP BY key
+                ORDER BY key ASC
+                "#,
+            )
+            .fetch_all(pool)
+            .await
+        }
+        "%Y-%m" => {
+            sqlx::query(
+                r#"
+                SELECT strftime('%Y-%m', event_time) as key, COUNT(*) as count
+                FROM agent_resource_usage_events
+                WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+                GROUP BY key
+                ORDER BY key ASC
+                "#,
+            )
+            .fetch_all(pool)
+            .await
+        }
+        _ => {
+            sqlx::query(
+                r#"
+                SELECT strftime('%Y', event_time) as key, COUNT(*) as count
+                FROM agent_resource_usage_events
+                WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+                GROUP BY key
+                ORDER BY key ASC
+                "#,
+            )
+            .fetch_all(pool)
+            .await
+        }
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| UsageMetric {
+            key: row.get("key"),
+            count: row.get("count"),
+        })
+        .collect())
+}
+
 async fn recent_usage_events(pool: &SqlitePool) -> Result<Vec<UsageEvent>, String> {
     let rows = sqlx::query(
         r#"
-        SELECT resource_type, resource_id, action, source, created_at
-        FROM resource_usage_events
-        ORDER BY created_at DESC
+        SELECT resource_type, COALESCE(resource_id, '') as resource_id, usage_kind as action, agent_client as source, event_time as created_at
+        FROM agent_resource_usage_events
+        WHERE event_source = 'log_inferred' AND confidence IN ('high', 'medium')
+        ORDER BY event_time DESC
         LIMIT 50
         "#,
     )
@@ -775,7 +1113,7 @@ async fn recent_usage_events(pool: &SqlitePool) -> Result<Vec<UsageEvent>, Strin
             resource_type: row.get("resource_type"),
             resource_id: row.get("resource_id"),
             action: row.get("action"),
-            source: row.get("source"),
+            source: Some(row.get::<String, _>("source")),
             created_at: row.get("created_at"),
         })
         .collect())
@@ -874,7 +1212,9 @@ async fn append_agent_issues(
         let agent_type: Option<String> = row.get("type");
         let app_path: Option<String> = row.get("app_path");
         let config_path: Option<String> = row.get("config_path");
-        if agent_type.as_deref() == Some("App") && app_path.as_deref().is_none_or(|p| !Path::new(p).exists()) {
+        if agent_type.as_deref() == Some("App")
+            && app_path.as_deref().is_none_or(|p| !Path::new(p).exists())
+        {
             issues.push(HealthIssue {
                 severity: "error".to_string(),
                 source: "Agent".to_string(),
@@ -908,12 +1248,11 @@ async fn append_skill_issues(
     pool: &SqlitePool,
     issues: &mut Vec<HealthIssue>,
 ) -> Result<(), String> {
-    let rows = sqlx::query(
-        "SELECT name, path, status, needs_review, needs_improvement FROM skills",
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    let rows =
+        sqlx::query("SELECT name, path, status, needs_review, needs_improvement FROM skills")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| e.to_string())?;
     for row in rows {
         let name: String = row.get("name");
         let path: String = row.get("path");
@@ -939,7 +1278,8 @@ async fn append_skill_issues(
                 title: "Skill 需要人工复核".to_string(),
                 resource_name: Some(name),
                 resource_path: Some(path),
-                description: "该 Skill 已标记为 broken、needs_review 或 needs_improvement。".to_string(),
+                description: "该 Skill 已标记为 broken、needs_review 或 needs_improvement。"
+                    .to_string(),
                 suggestion: "在 Skills 页面查看复核备注并完成整理。".to_string(),
                 status: "open".to_string(),
             });
@@ -948,10 +1288,7 @@ async fn append_skill_issues(
     Ok(())
 }
 
-async fn append_mcp_issues(
-    pool: &SqlitePool,
-    issues: &mut Vec<HealthIssue>,
-) -> Result<(), String> {
+async fn append_mcp_issues(pool: &SqlitePool, issues: &mut Vec<HealthIssue>) -> Result<(), String> {
     let rows = sqlx::query("SELECT name, command, source_path, status FROM mcp_servers")
         .fetch_all(pool)
         .await
@@ -1012,7 +1349,8 @@ async fn append_path_issues(
                     resource_name: Some(name),
                     resource_path: Some(path),
                     description: "记录中的本地路径不存在或当前不可访问。".to_string(),
-                    suggestion: "确认路径是否已移动；如已废弃，在对应页面更新或移除索引。".to_string(),
+                    suggestion: "确认路径是否已移动；如已废弃，在对应页面更新或移除索引。"
+                        .to_string(),
                     status: "open".to_string(),
                 });
             }

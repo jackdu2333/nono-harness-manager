@@ -1,3 +1,4 @@
+// Force recompile to embed all migrations
 use chrono::Utc;
 use serde_json::{json, Value};
 use sqlx::{Row, SqlitePool};

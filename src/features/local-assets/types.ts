@@ -76,9 +76,29 @@ export interface UsageEvent {
   created_at: string;
 }
 
+export interface MatrixCell {
+  agent: string;
+  resource: string;
+  count: number;
+}
+
+export interface UsageTrends {
+  week: UsageMetric[];
+  month: UsageMetric[];
+  year: UsageMetric[];
+}
+
 export interface AnalyticsOverview {
   resource_counts: Record<string, number>;
   usage_by_resource_type: UsageMetric[];
   usage_by_action: UsageMetric[];
+  usage_by_agent_client: UsageMetric[];
+  usage_by_skill: UsageMetric[];
+  usage_by_mcp_server: UsageMetric[];
+  usage_by_mcp_tool: UsageMetric[];
+  skill_by_agent_matrix: MatrixCell[];
+  mcp_by_agent_matrix: MatrixCell[];
   recent_events: UsageEvent[];
+  trends: UsageTrends;
 }
+

@@ -167,7 +167,20 @@ pub fn auto_discover_agents() -> Vec<Agent> {
         );
     }
 
-    // 6. Workbuddy
+    // 6. Newmax CLI
+    let newmax_dir = home.join(".newmax");
+    if newmax_dir.exists() {
+        add_agent!(
+            "",
+            "Newmax",
+            "CLI",
+            newmax_dir.to_string_lossy().to_string(),
+            None,
+            None
+        );
+    }
+
+    // 7. Workbuddy
     let workbuddy_dir = home.join("Library/Application Support/WorkBuddyExtension");
     if workbuddy_dir.exists() {
         add_agent!(
@@ -180,7 +193,7 @@ pub fn auto_discover_agents() -> Vec<Agent> {
         );
     }
 
-    // 7. NoNo Harness CLI & Clients (Dynamic scan in ~/.gemini)
+    // 8. NoNo Harness CLI & Clients (Dynamic scan in ~/.gemini)
     let gemini_dir = home.join(".gemini");
     if let Ok(entries) = fs::read_dir(&gemini_dir) {
         for entry in entries.flatten() {
