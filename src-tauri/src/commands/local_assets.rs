@@ -900,7 +900,6 @@ async fn usage_by_skill(pool: &SqlitePool) -> Result<Vec<UsageMetric>, String> {
     let rows = sqlx::query(
         r#"
         SELECT COALESCE(s.name, e.resource_name) as key, COUNT(*) as count
-        FROM agent_resource_usage_events
         FROM agent_resource_usage_events e
         LEFT JOIN skills s ON e.resource_id = s.id
         WHERE e.resource_type = 'skill' AND e.event_source = 'log_inferred' AND e.confidence IN ('high', 'medium')
