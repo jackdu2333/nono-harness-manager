@@ -19,7 +19,7 @@ It is **not** a cloud platform, a generic file manager, or a replacement for Cod
 
 ### Skills Management
 
-- Scan local Skill directories (Codex skills, Claude skills, WorkBuddy skills, Newmax skills, etc.)
+- Scan local Skill directories from supported or manually added sources, such as Codex, WorkBuddy, Newmax, and generic skill folders.
 - Display skill name, source, category, applicable clients, description, status
 - Filter by source, applicable client, category, and status
 - Mark skills as: commonly used, needs review, needs improvement, archived
@@ -36,7 +36,8 @@ It is **not** a cloud platform, a generic file manager, or a replacement for Cod
 
 ### Agents Management
 
-- Auto-discover local AI clients: Codex, Antigravity / NoNo Agent, WorkBuddy, Newmax, Cursor, Windsurf, Claude Code, Claude Desktop, Gemini-based agents
+- Auto-discover local AI clients when detectable: Codex, Antigravity / NoNo Agent, WorkBuddy, Newmax, Cursor, Windsurf, Claude Code, Claude Desktop, Gemini-based agents
+- Log analytics adapters currently support **Codex / Antigravity / WorkBuddy / Newmax**. Claude Code log adapter is planned.
 - Display client path, type (App / CLI / IDE Plugin), status, config directory
 - Launch agents directly from Harness (App type only; CLI / IDE Plugin show "needs manual launch")
 - Track launch count and usage events
@@ -188,7 +189,7 @@ The governance workflow is designed so that AI can help organize resources, but 
    ├─ Medium risk → pending review (user confirms)
    └─ High risk → blocked or manual review
 6. User reviews in Harness UI
-7. Only confirmed proposals are applied
+7. Only Trust-Policy-approved or user-confirmed proposals are applied
 8. All writes are recorded in audit logs with before/after snapshots
 ```
 
@@ -218,6 +219,8 @@ The governance workflow is designed so that AI can help organize resources, but 
 ## Installation & Development
 
 ### Prerequisites
+
+> **Note:** This repository is open source, but the npm package is marked `private` to prevent accidental publishing to npm.
 
 - macOS (Apple Silicon recommended)
 - [Node.js](https://nodejs.org/) 18+
@@ -291,7 +294,7 @@ npm run harness:cli:build
 
 ## Screenshots
 
-<!-- TODO: Add screenshots before public release -->
+Screenshots will be added soon.
 
 | Skills | Analytics | Settings |
 |---|---|---|
