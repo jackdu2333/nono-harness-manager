@@ -38,6 +38,9 @@ export const NAV_PATH_TO_KEY: Record<string, NavItemKey> = Object.fromEntries(
 
 export const SETTING_KEY = 'sidebar_visible_nav_items';
 
+// 跨组件同步事件：Settings 保存后通知 AppShell 立即刷新
+export const SIDEBAR_NAV_UPDATED_EVENT = 'sidebar-nav-updated';
+
 // 默认显示
 export const DEFAULT_VISIBLE: NavItemKey[] = [
   'dashboard',
@@ -64,6 +67,10 @@ export const FALLBACK_PRIORITY: NavItemKey[] = [
   'mcp',
   'analytics',
   'health',
+  'projects',
+  'proposals',
+  'memory',
+  'knowledge',
 ];
 
 async function loadVisibleNavItems(): Promise<Set<NavItemKey>> {
@@ -92,6 +99,11 @@ export function useSidebarNav() {
 
   useEffect(() => {
     refresh();
+
+    // 监听 Settings 保存事件，实现跨组件同步
+    const handler = () => refresh();
+    window.addEventListener(SIDEBAR_NAV_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(SIDEBAR_NAV_UPDATED_EVENT, handler);
   }, [refresh]);
 
   const save = useCallback(async (items: NavItemKey[]) => {

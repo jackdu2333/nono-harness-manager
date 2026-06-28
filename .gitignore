@@ -25,3 +25,19 @@ dist-ssr
 
 # Rust / Tauri build artifacts (avoid committing 5GB+ target dir)
 src-tauri/target/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+harness.db
+
+# Environment variables and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS files
+Thumbs.db
+ehthumbs.db

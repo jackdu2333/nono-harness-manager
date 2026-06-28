@@ -7,6 +7,7 @@ import {
   DEFAULT_VISIBLE,
   PRESETS,
   SETTING_KEY,
+  SIDEBAR_NAV_UPDATED_EVENT,
   type NavItemKey,
 } from "@/features/nav/config";
 
@@ -87,6 +88,22 @@ export default function SettingsPage() {
         key: SETTING_KEY,
         value: JSON.stringify([...selected]),
       });
+      // 通知 AppShell 立即刷新 sidebar
+      window.dispatchEvent(new Event(SIDEBAR_NAV_UPDATED_EVENT));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRestoreDefault = async () => {
+    setSelected(new Set(DEFAULT_VISIBLE));
+    setSaving(true);
+    try {
+      await invoke('set_setting', {
+        key: SETTING_KEY,
+        value: JSON.stringify([...DEFAULT_VISIBLE]),
+      });
+      window.dispatchEvent(new Event(SIDEBAR_NAV_UPDATED_EVENT));
     } finally {
       setSaving(false);
     }
@@ -181,7 +198,7 @@ export default function SettingsPage() {
               <Button onClick={handleSave} disabled={!canSave}>
                 {saving ? '保存中...' : '保存'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set(DEFAULT_VISIBLE))}>
+              <Button variant="ghost" size="sm" onClick={handleRestoreDefault} disabled={saving}>
                 恢复默认
               </Button>
             </div>
