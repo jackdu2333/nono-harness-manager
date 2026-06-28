@@ -86,6 +86,8 @@ fn main() {
             commands::local_assets::trigger_agent_log_scan,
             commands::local_assets::run_global_health_check,
             commands::local_assets::open_local_path,
+            commands::app_settings::get_setting,
+            commands::app_settings::set_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

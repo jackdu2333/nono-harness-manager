@@ -1,6 +1,15 @@
 import { Outlet, NavLink } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { LayoutDashboard, Settings, Layers, Box, Cpu, Database, FileCode2, ShieldCheck, FolderKanban, BarChart3, HeartPulse, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "../features/theme/ThemeToggle";
+import {
+  NAV_PATH_TO_KEY,
+  NAV_KEY_TO_PATH,
+  FALLBACK_PRIORITY,
+  useSidebarNav,
+  type NavItemKey,
+} from "../features/nav/config";
 
 type NavStatus = 'Beta' | 'Soon' | 'Ready' | 'Disabled';
 
@@ -8,6 +17,7 @@ interface NavItem {
   icon: LucideIcon;
   label: string;
   path: string;
+  navKey: NavItemKey;
   status?: NavStatus;
 }
 
@@ -21,26 +31,26 @@ const navGroups: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-      { icon: BarChart3, label: 'Analytics', path: '/analytics', status: 'Soon' },
-      { icon: HeartPulse, label: 'Health Check', path: '/health', status: 'Soon' },
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/', navKey: 'dashboard' },
+      { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Soon' },
+      { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Soon' },
     ],
   },
   {
     label: 'Assets',
     items: [
-      { icon: Layers, label: 'Skills', path: '/skills', status: 'Beta' },
-      { icon: Cpu, label: 'Agents', path: '/agents', status: 'Beta' },
-      { icon: Box, label: 'MCP', path: '/mcp', status: 'Beta' },
-      { icon: Database, label: 'Memory', path: '/memory', status: 'Soon' },
-      { icon: FileCode2, label: 'Knowledge', path: '/knowledge', status: 'Soon' },
+      { icon: Layers, label: 'Skills', path: '/skills', navKey: 'skills', status: 'Beta' },
+      { icon: Cpu, label: 'Agents', path: '/agents', navKey: 'agents', status: 'Beta' },
+      { icon: Box, label: 'MCP', path: '/mcp', navKey: 'mcp', status: 'Beta' },
+      { icon: Database, label: 'Memory', path: '/memory', navKey: 'memory', status: 'Soon' },
+      { icon: FileCode2, label: 'Knowledge', path: '/knowledge', navKey: 'knowledge', status: 'Soon' },
     ],
   },
   {
     label: 'Work',
     items: [
-      { icon: FolderKanban, label: 'Projects', path: '/projects', status: 'Soon' },
-      { icon: ShieldCheck, label: 'Proposals', path: '/proposals', status: 'Beta' },
+      { icon: FolderKanban, label: 'Projects', path: '/projects', navKey: 'projects', status: 'Soon' },
+      { icon: ShieldCheck, label: 'Proposals', path: '/proposals', navKey: 'proposals', status: 'Beta' },
     ],
   },
 ];
@@ -53,6 +63,30 @@ const badgeClass: Record<NavStatus, string> = {
 };
 
 export default function AppShell() {
+  const { visible, loading } = useSidebarNav();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 当前页面被隐藏时自动跳转到第一个可见页面
+  useEffect(() => {
+    if (loading) return;
+    if (location.pathname === '/settings') return;
+    const currentKey = NAV_PATH_TO_KEY[location.pathname];
+    if (currentKey && visible.has(currentKey)) return;
+    const fallback = FALLBACK_PRIORITY.find(k => visible.has(k));
+    if (fallback) {
+      navigate(NAV_KEY_TO_PATH[fallback]);
+    }
+  }, [visible, loading, location.pathname, navigate]);
+
+  // 按配置过滤 navGroups
+  const filteredGroups = navGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => visible.has(item.navKey)),
+    }))
+    .filter(group => group.items.length > 0);
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden selection:bg-primary/30 transition-colors duration-200">
       <aside className="w-64 bg-sidebar border-r border-border flex flex-col h-full flex-shrink-0 transition-colors duration-200">
@@ -67,7 +101,7 @@ export default function AppShell() {
         </div>
 
         <nav className="flex-1 px-4 overflow-y-auto">
-          {navGroups.map((group, groupIdx) => (
+          {filteredGroups.map((group, groupIdx) => (
             <div key={group.label} className={groupIdx > 0 ? 'mt-4' : ''}>
               <div className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
                 {group.label}
