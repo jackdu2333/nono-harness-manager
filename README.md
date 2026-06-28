@@ -37,7 +37,7 @@ It is **not** a cloud platform, a generic file manager, or a replacement for Cod
 ### Agents Management
 
 - Auto-discover local AI clients when detectable: Codex, Antigravity / NoNo Agent, WorkBuddy, Newmax, Cursor, Windsurf, Claude Code, Claude Desktop, Gemini-based agents
-- Log analytics adapters currently support **Codex / Antigravity / WorkBuddy / Newmax**. Claude Code log adapter is planned.
+- Log analytics adapters currently support **Codex / Antigravity / WorkBuddy / Newmax / Claude Code**.
 - Display client path, type (App / CLI / IDE Plugin), status, config directory
 - Launch agents directly from Harness (App type only; CLI / IDE Plugin show "needs manual launch")
 - Track launch count and usage events
@@ -306,8 +306,7 @@ Screenshots will be added soon.
 
 - **macOS only** — no Windows or Linux support yet
 - Analytics is **log-inferred**, not precise call counting. Results depend on log format availability
-- Supported log adapters: **Codex**, **Antigravity / NoNo Agent**, **WorkBuddy**, **Newmax**
-- **Claude Code** log adapter is planned but not yet implemented
+- Supported log adapters: **Codex**, **Antigravity / NoNo Agent**, **WorkBuddy**, **Newmax**, **Claude Code**
 - MCP Server runs via `harness_cli` subprocess per call — suitable for local use, not production-grade long-running
 - Memory / Knowledge / Projects pages are basic versions
 - Log formats may change with client updates; adapters need ongoing maintenance
@@ -317,7 +316,6 @@ Screenshots will be added soon.
 
 ## Roadmap
 
-- [ ] Claude Code log adapter
 - [ ] Finer-grained confidence calibration for log inference
 - [ ] Low-confidence event confirmation UI
 - [ ] MCP tool schema display enhancement
