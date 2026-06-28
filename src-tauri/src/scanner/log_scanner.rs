@@ -238,12 +238,28 @@ pub async fn scan_all_logs(pool: &SqlitePool) -> Result<(), String> {
                 }
             }
         } else {
-            // Placeholder for ClaudeCodeLogAdapter / WorkBuddyLogAdapter
-            // 占位以兼容未来增加的客户端适配器
-            log::info!(
-                "[Log Scanner] Adapter placeholder hit for agent: {}",
-                agent_name
-            );
+            // Claude Code CLI: app_path 通常是 ~/.claude，日志在 projects/ 子目录
+            if agent_name_lower.contains("claude code") || agent_name_lower == "claude" {
+                let projects_path = app_path.join("projects");
+                if projects_path.exists() {
+                    if let Err(e) =
+                        scan_claude_code(pool, &projects_path, &agent_id, &skills, &mcp_servers)
+                            .await
+                    {
+                        log::error!(
+                            "[Log Scanner] ClaudeCodeAdapter failed for {}: {}",
+                            agent_name,
+                            e
+                        );
+                    }
+                }
+            } else {
+                // Placeholder for future adapters
+                log::info!(
+                    "[Log Scanner] Adapter placeholder hit for agent: {}",
+                    agent_name
+                );
+            }
         }
     }
 
@@ -278,6 +294,49 @@ async fn scan_newmax(
                 .filter(|s| !s.starts_with("agent-"));
 
             if let Err(e) = parse_newmax_log(
+                pool,
+                &file_path,
+                agent_id,
+                session_id.as_deref(),
+                skills,
+                mcp_servers,
+            )
+            .await
+            {
+                log::warn!("[Log Scanner] Parse error at {}: {}", file_path, e);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Recursively find and scan Claude Code JSONL session logs
+/// 递归检索并扫描 Claude Code 的 JSONL 会话日志（格式与 Newmax 一致）
+async fn scan_claude_code(
+    pool: &SqlitePool,
+    projects_path: &Path,
+    agent_id: &str,
+    skills: &[SkillInfo],
+    mcp_servers: &[McpInfo],
+) -> Result<(), String> {
+    for entry in WalkDir::new(projects_path)
+        .max_depth(5)
+        .into_iter()
+        .filter_entry(|e| {
+            let name = e.file_name().to_string_lossy();
+            name != ".git" && name != "node_modules"
+        })
+        .flatten()
+    {
+        let file_name = entry.file_name().to_string_lossy();
+        if entry.file_type().is_file() && file_name.ends_with(".jsonl") {
+            let file_path = entry.path().to_string_lossy().to_string();
+            let session_id = file_name
+                .strip_suffix(".jsonl")
+                .map(|s| s.to_string())
+                .filter(|s| !s.starts_with("agent-"));
+
+            if let Err(e) = parse_claude_code_log(
                 pool,
                 &file_path,
                 agent_id,
@@ -602,7 +661,52 @@ async fn parse_newmax_log(
     skills: &[SkillInfo],
     mcp_servers: &[McpInfo],
 ) -> Result<(), String> {
-    let agent_client = "Newmax";
+    // Claude Code 和 Newmax 使用相同的 JSONL transcript 格式，共用解析逻辑
+    parse_claude_compatible_log(
+        pool,
+        file_path,
+        agent_id,
+        "Newmax",
+        fallback_session_id,
+        skills,
+        mcp_servers,
+    )
+    .await
+}
+
+/// Incrementally parse Claude Code JSONL logs (same format as Newmax)
+/// 增量解析 Claude Code JSONL。与 Newmax 共用 Claude-compatible transcript 解析逻辑。
+async fn parse_claude_code_log(
+    pool: &SqlitePool,
+    file_path: &str,
+    agent_id: &str,
+    fallback_session_id: Option<&str>,
+    skills: &[SkillInfo],
+    mcp_servers: &[McpInfo],
+) -> Result<(), String> {
+    parse_claude_compatible_log(
+        pool,
+        file_path,
+        agent_id,
+        "Claude Code",
+        fallback_session_id,
+        skills,
+        mcp_servers,
+    )
+    .await
+}
+
+/// Shared parser for Claude-compatible JSONL transcripts (Newmax + Claude Code)
+/// 共用解析逻辑：结构化 tool_use 优先，避免把普通对话误判为真实使用。
+async fn parse_claude_compatible_log(
+    pool: &SqlitePool,
+    file_path: &str,
+    agent_id: &str,
+    agent_client: &str,
+    fallback_session_id: Option<&str>,
+    skills: &[SkillInfo],
+    mcp_servers: &[McpInfo],
+) -> Result<(), String> {
     let (last_offset, last_modified, file_size) =
         get_checkpoint_info(pool, agent_client, file_path).await?;
     if file_size <= last_offset {
