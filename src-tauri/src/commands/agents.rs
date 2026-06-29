@@ -119,11 +119,24 @@ pub async fn scan_system_agents(pool: State<'_, SqlitePool>) -> Result<ScanResul
     for agent in discovered {
         if agent.agent_key.is_some() {
             // upsert: 检查是否已存在来区分 inserted vs updated
-            let existing = sqlx::query("SELECT 1 FROM agents WHERE agent_key = ?")
+            // 单个 agent 查询失败只计入 errors，不中断整个扫描
+            let existing = match sqlx::query("SELECT 1 FROM agents WHERE agent_key = ?")
                 .bind(&agent.agent_key)
                 .fetch_optional(&*pool)
                 .await
-                .map_err(|e| e.to_string())?;
+            {
+                Ok(row) => row,
+                Err(e) => {
+                    log::error!(
+                        "[Agent Discovery] existing check failed for {}: {}",
+                        agent.name,
+                        e
+                    );
+                    errors.push(format!("{}: 查询失败 ({})", agent.name, e));
+                    skipped += 1;
+                    continue;
+                }
+            };
 
             match agent_repository::upsert_agent_by_key(&*pool, &agent).await {
                 Ok(()) => {
