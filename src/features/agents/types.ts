@@ -33,3 +33,11 @@ export function getAgentGroup(agent: Agent): AgentGroup {
   if (agent.confidence === 'candidate' || agent.status === 'pending') return 'candidate';
   return 'confirmed';
 }
+
+export interface ScanResult {
+  discovered_count: number;
+  inserted_count: number;
+  updated_count: number;
+  skipped_count: number;
+  errors: string[];
+}

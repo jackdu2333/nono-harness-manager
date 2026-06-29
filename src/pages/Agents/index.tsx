@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAgentsStore } from '@/features/agents/store';
-import { Agent, getAgentGroup } from '@/features/agents/types';
+import { Agent, getAgentGroup, ScanResult } from '@/features/agents/types';
 import { AgentsToolbar } from '@/features/agents/components/AgentsToolbar';
 import { PinnedAgentsBar } from '@/features/agents/components/PinnedAgentsBar';
 import { AgentList } from '@/features/agents/components/AgentList';
@@ -17,6 +17,7 @@ export default function AgentsPage() {
   const [isScanDrawerOpen, setIsScanDrawerOpen] = useState(false);
   const [showCandidates, setShowCandidates] = useState(true);
   const [showIgnored, setShowIgnored] = useState(false);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAgents();
@@ -35,7 +36,23 @@ export default function AgentsPage() {
   };
 
   const handleDiscoverSystem = async () => {
-    await scanSystemAgents();
+    setScanMessage(null);
+    try {
+      const result = await scanSystemAgents();
+      const parts: string[] = [];
+      if (result.inserted_count > 0) parts.push('新增 ' + result.inserted_count);
+      if (result.updated_count > 0) parts.push('更新 ' + result.updated_count);
+      if (result.skipped_count > 0) parts.push('跳过 ' + result.skipped_count);
+      if (result.errors.length > 0) {
+        setScanMessage('发现 ' + result.discovered_count + ' 个客户端，' + parts.join('，') + '。' + result.errors.length + ' 个错误');
+      } else if (parts.length > 0) {
+        setScanMessage('发现 ' + result.discovered_count + ' 个客户端，' + parts.join('，'));
+      } else {
+        setScanMessage('发现 ' + result.discovered_count + ' 个客户端，无新增');
+      }
+    } catch (err) {
+      setScanMessage('扫描失败: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   const q = searchQuery.toLowerCase();
@@ -60,6 +77,12 @@ export default function AgentsPage() {
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
+      {scanMessage && (
+        <div className={'px-4 py-2 text-xs border-b border-border ' + (scanMessage.includes('错误') || scanMessage.includes('失败') ? 'bg-destructive/5 text-destructive' : 'bg-primary/5 text-primary')}>
+          {scanMessage}
+          <button className='ml-2 text-muted-foreground hover:text-foreground' onClick={() => setScanMessage(null)}>x</button>
+        </div>
+      )}
       <AgentsToolbar 
         totalCount={agents.length}
         activeCount={activeCount}

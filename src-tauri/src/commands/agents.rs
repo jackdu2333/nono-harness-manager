@@ -8,6 +8,15 @@ use sqlx::SqlitePool;
 use tauri::{command, State};
 use uuid::Uuid;
 
+#[derive(Debug, serde::Serialize)]
+pub struct ScanResult {
+    pub discovered_count: usize,
+    pub inserted_count: usize,
+    pub updated_count: usize,
+    pub skipped_count: usize,
+    pub errors: Vec<String>,
+}
+
 #[command]
 pub async fn list_agents(pool: State<'_, SqlitePool>) -> Result<Vec<Agent>, String> {
     agent_repository::list_agents(&*pool)
@@ -99,24 +108,64 @@ pub async fn scan_agents_in_dir(
 }
 
 #[command]
-pub async fn scan_system_agents(pool: State<'_, SqlitePool>) -> Result<usize, String> {
-    let new_agents = crate::scanner::agent_scanner::auto_discover_agents();
-    let count = new_agents.len();
+pub async fn scan_system_agents(pool: State<'_, SqlitePool>) -> Result<ScanResult, String> {
+    let discovered = crate::scanner::agent_scanner::auto_discover_agents();
+    let discovered_count = discovered.len();
+    let mut inserted = 0usize;
+    let mut updated = 0usize;
+    let mut skipped = 0usize;
+    let mut errors: Vec<String> = Vec::new();
 
-    for agent in new_agents {
-        // 按 agent_key upsert：已存在则更新路径/置信度/evidence，不覆盖 is_user_confirmed / is_ignored
+    for agent in discovered {
         if agent.agent_key.is_some() {
-            if let Err(e) = agent_repository::upsert_agent_by_key(&*pool, &agent).await {
-                log::error!("[Agent Discovery] upsert failed for {}: {}", agent.name, e);
+            // upsert: 检查是否已存在来区分 inserted vs updated
+            let existing = sqlx::query("SELECT 1 FROM agents WHERE agent_key = ?")
+                .bind(&agent.agent_key)
+                .fetch_optional(&*pool)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            match agent_repository::upsert_agent_by_key(&*pool, &agent).await {
+                Ok(()) => {
+                    if existing.is_some() {
+                        updated += 1;
+                    } else {
+                        inserted += 1;
+                    }
+                }
+                Err(e) => {
+                    log::error!("[Agent Discovery] upsert failed for {}: {}", agent.name, e);
+                    errors.push(format!("{}: {}", agent.name, e));
+                    skipped += 1;
+                }
             }
         } else {
-            if let Err(e) = agent_repository::add_agent(&*pool, &agent).await {
-                log::error!("[Agent Discovery] insert failed for {}: {}", agent.name, e);
+            // 无 agent_key 的走普通 insert
+            let existing = agent_repository::list_agents(&*pool)
+                .await
+                .unwrap_or_default();
+            if existing.iter().any(|a| same_agent_identity(a, &agent)) {
+                skipped += 1;
+            } else {
+                match agent_repository::add_agent(&*pool, &agent).await {
+                    Ok(()) => inserted += 1,
+                    Err(e) => {
+                        log::error!("[Agent Discovery] insert failed for {}: {}", agent.name, e);
+                        errors.push(format!("{}: {}", agent.name, e));
+                        skipped += 1;
+                    }
+                }
             }
         }
     }
 
-    Ok(count)
+    Ok(ScanResult {
+        discovered_count,
+        inserted_count: inserted,
+        updated_count: updated,
+        skipped_count: skipped,
+        errors,
+    })
 }
 
 #[command]

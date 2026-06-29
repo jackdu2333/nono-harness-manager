@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Agent } from './types';
+import { Agent, ScanResult } from './types';
 
 export async function listAgents(): Promise<Agent[]> {
   return invoke('list_agents');
@@ -29,7 +29,7 @@ export async function scanAgentsInDir(path: string): Promise<number> {
   return invoke('scan_agents_in_dir', { path });
 }
 
-export async function scanSystemAgents(): Promise<number> {
+export async function scanSystemAgents(): Promise<ScanResult> {
   return invoke('scan_system_agents');
 }
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Agent } from './types';
+import { Agent, ScanResult } from './types';
 import * as api from './api';
 import { arrayMove } from '@dnd-kit/sortable';
 
@@ -14,7 +14,7 @@ interface AgentsState {
   addAgent: (name: string, type: string | null, appPath: string | null, configPath: string | null, defaultWorkspace: string | null) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
   scanAgents: (path: string) => Promise<number>;
-  scanSystemAgents: () => Promise<number>;
+  scanSystemAgents: () => Promise<ScanResult>;
   launchAgent: (id: string) => Promise<void>;
   openConfigDir: (id: string) => Promise<void>;
   confirmCandidate: (id: string) => Promise<void>;
@@ -107,9 +107,9 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
   scanSystemAgents: async () => {
     set({ isScanning: true });
     try {
-      const count = await api.scanSystemAgents();
+      const result = await api.scanSystemAgents();
       await get().fetchAgents();
-      return count;
+      return result;
     } catch (err) {
       console.error('Failed to scan system agents:', err);
       throw err;
