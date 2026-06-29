@@ -119,25 +119,7 @@ export function AgentsToolbar({
               { value: 'broken', label: '异常 (Broken)' },
             ]} 
           />
-          <FilterSelect 
-            value={confidenceFilter} 
-            onChange={setConfidenceFilter} 
-            options={[
-              { value: 'all', label: '置信度: 全部' },
-              { value: 'verified', label: '已验证 (Verified)' },
-              { value: 'probable', label: '推断 (Probable)' },
-              { value: 'candidate', label: '候选 (Candidate)' },
-            ]} 
-          />
-          <FilterSelect 
-            value={launchableFilter} 
-            onChange={setLaunchableFilter} 
-            options={[
-              { value: 'all', label: '启动: 全部' },
-              { value: 'launchable', label: '可直接启动' },
-              { value: 'unlaunchable', label: '不可启动' },
-            ]} 
-          />
+
         </div>
       </div>
     </div>

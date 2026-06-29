@@ -137,8 +137,8 @@ export function PinnedAgentsBar({ agents }: Props) {
     }
   };
 
-  // Max 4 agents
-  const displayAgents = agents.slice(0, 4);
+  // Max 3 agents
+  const displayAgents = agents.slice(0, 3);
 
   const activeAgent = activeId ? displayAgents.find(a => a.id === activeId) : null;
 
