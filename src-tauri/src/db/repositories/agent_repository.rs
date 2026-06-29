@@ -111,7 +111,7 @@ pub async fn delete_agent(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error
 
 pub async fn confirm_candidate(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE agents SET is_user_confirmed = 1, status = 'active', updated_at = ? WHERE id = ?",
+        "UPDATE agents SET is_user_confirmed = 1, is_ignored = 0, status = 'active', updated_at = ? WHERE id = ?",
     )
     .bind(chrono::Utc::now().to_rfc3339())
     .bind(id)

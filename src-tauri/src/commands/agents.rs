@@ -106,9 +106,13 @@ pub async fn scan_system_agents(pool: State<'_, SqlitePool>) -> Result<usize, St
     for agent in new_agents {
         // 按 agent_key upsert：已存在则更新路径/置信度/evidence，不覆盖 is_user_confirmed / is_ignored
         if agent.agent_key.is_some() {
-            let _ = agent_repository::upsert_agent_by_key(&*pool, &agent).await;
+            if let Err(e) = agent_repository::upsert_agent_by_key(&*pool, &agent).await {
+                log::error!("[Agent Discovery] upsert failed for {}: {}", agent.name, e);
+            }
         } else {
-            let _ = agent_repository::add_agent(&*pool, &agent).await;
+            if let Err(e) = agent_repository::add_agent(&*pool, &agent).await {
+                log::error!("[Agent Discovery] insert failed for {}: {}", agent.name, e);
+            }
         }
     }
 
