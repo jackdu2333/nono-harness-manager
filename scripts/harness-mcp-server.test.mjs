@@ -56,3 +56,23 @@ test('handles initialized notification without response and responds to ping', a
   assert.equal(responses[1].id, 2);
   assert.deepEqual(responses[1].result, {});
 });
+
+test('exposes agent as a supported MCP resource type', async () => {
+  const responses = await callServer([
+    { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} },
+  ]);
+
+  const tools = responses[0].result.tools;
+  for (const toolName of [
+    'harness_list_resources',
+    'harness_get_resource_context',
+    'harness_create_proposal',
+  ]) {
+    const tool = tools.find(item => item.name === toolName);
+    assert.ok(tool, `${toolName} should be listed`);
+    assert.ok(
+      tool.inputSchema.properties.resource_type.enum.includes('agent'),
+      `${toolName} should support agent resources`,
+    );
+  }
+});

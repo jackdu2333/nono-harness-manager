@@ -22,6 +22,23 @@ const SAFE_CONTEXT_FILES: &[&str] = &[
     "skill.yaml",
     "skill.json",
 ];
+const LOG_ADAPTER_SUPPORTED_AGENT_KEYS: &[&str] = &[
+    "codex",
+    "antigravity",
+    "antigravity_cli",
+    "antigravity_ide",
+    "workbuddy",
+    "newmax",
+    "claude_code",
+];
+const AGENT_PROPOSAL_TYPES: &[&str] = &[
+    "update_agent_metadata",
+    "suggest_agent_confirmation",
+    "suggest_agent_ignore",
+    "fix_agent_paths",
+    "improve_agent_detection_rule",
+    "explain_agent_launch_strategy",
+];
 #[tokio::main]
 async fn main() {
     if let Err(err) = run().await {
@@ -167,6 +184,39 @@ async fn list_resources(pool: &SqlitePool, resource_type: Option<&str>) -> Resul
         }));
     }
 
+    if resource_type.is_none() || resource_type == Some("agent") {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, name, agent_key, type, status, confidence, detection_source,
+                   is_user_confirmed, is_ignored, last_detected_at,
+                   launch_count, last_launched_at
+            FROM agents
+            ORDER BY updated_at DESC
+            "#,
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        resources.extend(rows.into_iter().map(|row| {
+            json!({
+                "resource_type": "agent",
+                "id": row.get::<String, _>("id"),
+                "name": row.get::<String, _>("name"),
+                "agent_key": row.get::<Option<String>, _>("agent_key"),
+                "type": row.get::<Option<String>, _>("type"),
+                "status": row.get::<Option<String>, _>("status"),
+                "confidence": row.get::<Option<String>, _>("confidence"),
+                "detection_source": row.get::<Option<String>, _>("detection_source"),
+                "is_user_confirmed": sqlite_bool(row.get::<Option<i64>, _>("is_user_confirmed")),
+                "is_ignored": sqlite_bool(row.get::<Option<i64>, _>("is_ignored")),
+                "last_detected_at": row.get::<Option<String>, _>("last_detected_at"),
+                "launch_count": row.get::<i64, _>("launch_count"),
+                "last_launched_at": row.get::<Option<String>, _>("last_launched_at"),
+            })
+        }));
+    }
+
     Ok(json!({ "resources": resources }))
 }
 
@@ -239,6 +289,65 @@ async fn get_context(
                 "evidence_files": row.get::<Option<String>, _>("evidence_files")
             }))
         }
+        "agent" => {
+            let row = sqlx::query(
+                r#"
+                SELECT id, name, agent_key, type, status, app_path, cli_path,
+                       config_path, log_path, bundle_id, confidence, detection_source,
+                       evidence_json, is_user_confirmed, is_ignored, last_detected_at,
+                       launch_count, last_launched_at, launch_command
+                FROM agents
+                WHERE id = ?
+                "#,
+            )
+            .bind(resource_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let agent_type = row.get::<Option<String>, _>("type");
+            let app_path = row.get::<Option<String>, _>("app_path");
+            let launch_command = row.get::<Option<String>, _>("launch_command");
+            let launchable = is_agent_launchable(
+                agent_type.as_deref(),
+                app_path.as_deref(),
+                launch_command.as_deref(),
+            );
+            let agent_key = row.get::<Option<String>, _>("agent_key");
+
+            Ok(json!({
+                "resource_type": "agent",
+                "id": row.get::<String, _>("id"),
+                "name": row.get::<String, _>("name"),
+                "agent_key": agent_key,
+                "type": agent_type,
+                "status": row.get::<Option<String>, _>("status"),
+                "confidence": row.get::<Option<String>, _>("confidence"),
+                "safe_context": {
+                    "app_path": app_path,
+                    "cli_path": row.get::<Option<String>, _>("cli_path"),
+                    "config_path": row.get::<Option<String>, _>("config_path"),
+                    "log_path": row.get::<Option<String>, _>("log_path"),
+                    "bundle_id": row.get::<Option<String>, _>("bundle_id"),
+                    "detection_source": row.get::<Option<String>, _>("detection_source"),
+                    "is_user_confirmed": sqlite_bool(row.get::<Option<i64>, _>("is_user_confirmed")),
+                    "is_ignored": sqlite_bool(row.get::<Option<i64>, _>("is_ignored")),
+                    "last_detected_at": row.get::<Option<String>, _>("last_detected_at"),
+                    "launch_count": row.get::<i64, _>("launch_count"),
+                    "last_launched_at": row.get::<Option<String>, _>("last_launched_at"),
+                    "launchable": launchable,
+                    "launch_unavailable_reason": launch_unavailable_reason(
+                        agent_type.as_deref(),
+                        app_path.as_deref(),
+                        launch_command.as_deref()
+                    ),
+                    "log_adapter_supported": agent_key
+                        .as_deref()
+                        .is_some_and(|key| LOG_ADAPTER_SUPPORTED_AGENT_KEYS.contains(&key)),
+                    "evidence_signals": evidence_signals(row.get::<Option<String>, _>("evidence_json"))
+                }
+            }))
+        }
         _ => Err("Unsupported resource type".to_string()),
     }
 }
@@ -253,6 +362,7 @@ async fn create_proposal(
     let changes: Value = serde_json::from_str(proposed_changes)
         .map_err(|e| format!("proposed_changes must be JSON: {}", e))?;
     validate_resource_type(resource_type)?;
+    validate_proposal_type(resource_type, proposal_type)?;
     trust_policy::ensure_json_object(&changes)?;
     if !trust_policy::resource_exists(pool, resource_type, resource_id).await? {
         return Err("Resource not found".to_string());
@@ -296,18 +406,89 @@ async fn create_proposal(
 }
 
 fn usage() -> String {
-    "Usage: harness_cli list [skill|mcp_server] | context <skill|mcp_server> <id> | propose <type> <id> <proposal_type> '<json>' | rollback <proposal_id> | reject <proposal_id>".to_string()
+    "Usage: harness_cli list [skill|mcp_server|agent] | context <skill|mcp_server|agent> <id> | propose <type> <id> <proposal_type> '<json>' | rollback <proposal_id> | reject <proposal_id>".to_string()
 }
 
 fn validate_resource_type(resource_type: &str) -> Result<(), String> {
     if matches!(
         resource_type,
-        "skill" | "mcp_server" | "memory_source" | "knowledge_base" | "project"
+        "skill" | "mcp_server" | "agent" | "memory_source" | "knowledge_base" | "project"
     ) {
         Ok(())
     } else {
         Err("Unsupported resource type".to_string())
     }
+}
+
+fn validate_proposal_type(resource_type: &str, proposal_type: &str) -> Result<(), String> {
+    if resource_type == "agent" && !AGENT_PROPOSAL_TYPES.contains(&proposal_type) {
+        return Err(format!("Unsupported agent proposal type: {proposal_type}"));
+    }
+    Ok(())
+}
+
+fn sqlite_bool(value: Option<i64>) -> bool {
+    value.unwrap_or(0) != 0
+}
+
+fn evidence_signals(evidence_json: Option<String>) -> Vec<String> {
+    let Some(raw) = evidence_json else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+        return Vec::new();
+    };
+    value
+        .get("signals")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .take(5)
+        .map(str::to_string)
+        .collect()
+}
+
+fn is_agent_launchable(
+    agent_type: Option<&str>,
+    app_path: Option<&str>,
+    launch_command: Option<&str>,
+) -> bool {
+    if matches!(
+        agent_type,
+        Some("CLI") | Some("IDE Plugin") | Some("ConfigOnly") | Some("Plugin")
+    ) {
+        return false;
+    }
+    app_path.is_some_and(|path| path.ends_with(".app"))
+        || safe_open_app_command(launch_command).is_some()
+}
+
+fn launch_unavailable_reason(
+    agent_type: Option<&str>,
+    app_path: Option<&str>,
+    launch_command: Option<&str>,
+) -> Option<String> {
+    if is_agent_launchable(agent_type, app_path, launch_command) {
+        return None;
+    }
+    match agent_type {
+        Some("CLI") => Some("CLI Agent 第一阶段不直接启动，请配置安全启动方式。".to_string()),
+        Some("IDE Plugin") | Some("Plugin") => {
+            Some("IDE Plugin 第一阶段不由 Harness 直接启动。".to_string())
+        }
+        Some("ConfigOnly") => Some("ConfigOnly Agent 没有可安全启动的 App。".to_string()),
+        _ => Some("缺少可安全启动的 macOS App 路径。".to_string()),
+    }
+}
+
+fn safe_open_app_command(command: Option<&str>) -> Option<String> {
+    let command = command?.trim();
+    let app_name = command.strip_prefix("open -a ")?.trim();
+    if app_name.is_empty() || app_name.contains([';', '&', '|', '`', '$', '>', '<']) {
+        return None;
+    }
+    Some(app_name.trim_matches('"').to_string())
 }
 
 struct SafeContentExcerpt {

@@ -64,7 +64,7 @@ const tools = [
     description: 'List Harness resources. Read-only.',
     inputSchema: {
       type: 'object',
-      properties: { resource_type: { type: 'string', enum: ['skill', 'mcp_server'] } },
+      properties: { resource_type: { type: 'string', enum: ['skill', 'mcp_server', 'agent'] } },
     },
   },
   {
@@ -74,7 +74,7 @@ const tools = [
       type: 'object',
       required: ['resource_type', 'resource_id'],
       properties: {
-        resource_type: { type: 'string', enum: ['skill', 'mcp_server'] },
+        resource_type: { type: 'string', enum: ['skill', 'mcp_server', 'agent'] },
         resource_id: { type: 'string' },
       },
     },
@@ -86,7 +86,7 @@ const tools = [
       type: 'object',
       required: ['resource_type', 'resource_id', 'proposal_type', 'proposed_changes'],
       properties: {
-        resource_type: { type: 'string', enum: ['skill', 'mcp_server'] },
+        resource_type: { type: 'string', enum: ['skill', 'mcp_server', 'agent'] },
         resource_id: { type: 'string' },
         proposal_type: { type: 'string' },
         proposed_changes: { type: 'object' },

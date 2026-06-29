@@ -94,9 +94,17 @@ NoNo Harness Manager ships with a **read-only / proposal-based MCP Server**. Any
 
 | Tool | Access | Description |
 |---|---|---|
-| `harness_list_resources` | Read-only | List indexed skills or MCP servers |
-| `harness_get_resource_context` | Read-only | Get safe, redacted context for one resource (e.g. SKILL.md excerpt, README excerpt) |
+| `harness_list_resources` | Read-only | List indexed skills, MCP servers, or agents |
+| `harness_get_resource_context` | Read-only | Get safe, redacted context for one resource (e.g. SKILL.md excerpt, MCP config summary, Agent discovery evidence) |
 | `harness_create_proposal` | Proposal only | Create a metadata governance proposal (does not auto-apply) |
+
+Supported MCP resource types:
+
+- `skill`
+- `mcp_server`
+- `agent`
+
+Agent resources are exposed as **safe read-only context plus proposal workflow**. External AI clients can inspect detection confidence, launchability, log adapter support, and evidence signals, but cannot directly launch, confirm, ignore, or delete agents.
 
 **What the MCP Server does NOT provide:**
 
@@ -162,13 +170,16 @@ The `harness_cli` binary can be used directly for testing and scripting:
 # List resources
 npm run harness:cli -- list skill
 npm run harness:cli -- list mcp_server
+npm run harness:cli -- list agent
 
 # Get safe context for a resource
 npm run harness:cli -- context skill <skill_id>
 npm run harness:cli -- context mcp_server <mcp_server_id>
+npm run harness:cli -- context agent <agent_id>
 
 # Create a governance proposal
 npm run harness:cli -- propose skill <skill_id> update_metadata '{"description":"...","category":"...","tags":["..."]}'
+npm run harness:cli -- propose agent <agent_id> suggest_agent_confirmation '{"reason":"Detected config and log paths look consistent.","confidence":"medium"}'
 ```
 
 Proposals created via CLI enter the pending queue — they do **not** modify resources directly. Apply, reject, and rollback are handled by the Harness Trust Policy workflow.
@@ -196,6 +207,7 @@ The governance workflow is designed so that AI can help organize resources, but 
 **Trust Policy rules:**
 
 - **Auto-apply** is allowed only for: `description`, `summary`, `category`, `tags`, `confidence`, `evidence_files` on `skill` or `mcp_server` resources
+- **Agent proposals** are review-only suggestions. They are never auto-applied by Trust Policy
 - **Forbidden fields** (always blocked): `path`, `command`, `args`, `env`, `launch_command`, `source_path`, `status`, `enabled`, `delete`, `execute`
 - All applied proposals can be rolled back
 

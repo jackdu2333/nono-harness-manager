@@ -40,6 +40,10 @@ function isToday(value?: string | null) {
   return date.toDateString() === now.toDateString();
 }
 
+function canApplyProposal(proposal: IntelligenceProposal) {
+  return proposal.resource_type === 'skill' || proposal.resource_type === 'mcp_server';
+}
+
 function ProposalDetails({ proposal }: { proposal: IntelligenceProposal }) {
   return (
     <details className="mt-2 text-xs text-muted-foreground">
@@ -128,6 +132,10 @@ export default function ProposalsPage() {
     () => proposals.filter(p => p.status === 'pending_review' || p.status === 'pending_manual_review'),
     [proposals],
   );
+  const applyablePendingReview = useMemo(
+    () => pendingReview.filter(canApplyProposal),
+    [pendingReview],
+  );
   const blocked = useMemo(
     () => proposals.filter(p => p.status === 'blocked'),
     [proposals],
@@ -146,9 +154,9 @@ export default function ProposalsPage() {
   const applyAllPending = () =>
     setConfirmDialog({
       title: '批量应用',
-      description: `即将应用 ${pendingReview.length} 条 medium-risk proposal，是否继续？`,
+      description: `即将应用 ${applyablePendingReview.length} 条可应用的 medium-risk proposal，Agent 建议不会被直接应用。是否继续？`,
       action: async () => {
-        for (const proposal of pendingReview) {
+        for (const proposal of applyablePendingReview) {
           await applyIntelligenceProposal(proposal.id);
         }
       },
@@ -224,7 +232,7 @@ export default function ProposalsPage() {
             <h2 className="text-sm font-semibold text-foreground">待确认</h2>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={applyAllPending} disabled={pendingReview.length === 0}>
+            <Button variant="outline" size="sm" onClick={applyAllPending} disabled={applyablePendingReview.length === 0}>
               批量应用
             </Button>
             <Button variant="outline" size="sm" onClick={rejectAllPending} disabled={pendingReview.length === 0}>
@@ -241,13 +249,19 @@ export default function ProposalsPage() {
               proposal={proposal}
               actions={
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => runAction(() => applyIntelligenceProposal(proposal.id))}
-                  >
-                    应用
-                  </Button>
+                  {canApplyProposal(proposal) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runAction(() => applyIntelligenceProposal(proposal.id))}
+                    >
+                      应用
+                    </Button>
+                  ) : (
+                    <span className="rounded border border-border px-2 py-1 text-xs text-muted-foreground">
+                      仅建议
+                    </span>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

@@ -133,6 +133,14 @@ pub fn assess_proposal_risk(
         }
     }
 
+    if resource_type == "agent" {
+        return TrustPolicyDecision {
+            risk_level: RiskLevel::Medium,
+            reasons: vec!["agent proposals are review-only and cannot auto apply".to_string()],
+            can_auto_apply: false,
+        };
+    }
+
     for key in &keys {
         if !settings
             .allowed_auto_apply_fields
@@ -494,6 +502,7 @@ pub async fn resource_exists(
     let query = match resource_type {
         "skill" => "SELECT COUNT(*) as count FROM skills WHERE id = ?",
         "mcp_server" => "SELECT COUNT(*) as count FROM mcp_servers WHERE id = ?",
+        "agent" => "SELECT COUNT(*) as count FROM agents WHERE id = ?",
         "memory_source" => "SELECT COUNT(*) as count FROM memory_sources WHERE id = ?",
         "knowledge_base" => "SELECT COUNT(*) as count FROM knowledge_bases WHERE id = ?",
         "project" => "SELECT COUNT(*) as count FROM projects WHERE id = ?",
