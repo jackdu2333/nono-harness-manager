@@ -102,10 +102,10 @@ const DETECTORS: &[AgentDetector] = &[
     },
     AgentDetector {
         key: "antigravity",
-        display_name: "NoNo Agent Core",
+        display_name: "Antigravity Core",
         agent_type: "App",
-        app_names: &[],
-        bundle_ids: &[],
+        app_names: &["Antigravity.app"],
+        bundle_ids: &["com.google.antigravity"],
         cli_commands: &[],
         config_paths: &[".gemini/antigravity"],
         log_paths: &[".gemini/antigravity/brain"],
@@ -113,7 +113,7 @@ const DETECTORS: &[AgentDetector] = &[
     },
     AgentDetector {
         key: "antigravity_cli",
-        display_name: "NoNo CLI",
+        display_name: "Antigravity CLI",
         agent_type: "CLI",
         app_names: &[],
         bundle_ids: &[],
@@ -124,7 +124,7 @@ const DETECTORS: &[AgentDetector] = &[
     },
     AgentDetector {
         key: "antigravity_ide",
-        display_name: "NoNo IDE Plugin",
+        display_name: "Antigravity IDE Plugin",
         agent_type: "IDE Plugin",
         app_names: &[],
         bundle_ids: &[],

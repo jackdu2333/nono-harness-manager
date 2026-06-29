@@ -93,7 +93,7 @@ function TrendTimeline({
             const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
             return (
               <div key={item.key} className="flex items-center gap-3 text-xs">
-                <span className="w-14 text-muted-foreground text-left tabular-nums whitespace-nowrap">
+                <span className="w-20 text-muted-foreground text-left tabular-nums whitespace-nowrap flex-shrink-0">
                   {item.key}
                 </span>
                 <div className="flex-1 h-3 bg-muted rounded overflow-hidden relative">
