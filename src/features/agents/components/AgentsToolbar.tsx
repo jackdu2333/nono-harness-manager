@@ -81,7 +81,7 @@ export function AgentsToolbar({
       </div>
 
       {/* Row 2: Search & Advanced Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div className="relative w-[280px] shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B8E98]" />
           <Input
@@ -92,7 +92,7 @@ export function AgentsToolbar({
           />
         </div>
         
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-hidden pb-1">
           <div className="flex items-center gap-1.5 px-2 text-[#8B8E98]">
             <Filter className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">筛选</span>
@@ -146,7 +146,7 @@ function StatChip({ label, count, color = 'gray' }: { label: string, count: numb
 function FilterSelect({ value, onChange, options }: { value: string, onChange: (val: string) => void, options: {value: string, label: string}[] }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 text-xs bg-white border-[#E6E7EB] hover:bg-gray-50 focus:ring-1 focus:ring-blue-500 w-auto min-w-[120px]">
+      <SelectTrigger className="h-8 text-xs bg-white border-[#E6E7EB] hover:bg-gray-50 focus:ring-1 focus:ring-blue-500 w-[132px] min-w-0">
         <SelectValue placeholder={options[0].label} />
       </SelectTrigger>
       <SelectContent>

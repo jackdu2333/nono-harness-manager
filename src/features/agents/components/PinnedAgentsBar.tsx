@@ -59,7 +59,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
       <div 
         ref={setNodeRef}
         style={style}
-        className="h-12 w-64 rounded-md border-2 border-dashed border-blue-500/30 bg-blue-50/50 opacity-50 flex-shrink-0"
+        className="h-12 min-w-0 flex-1 max-w-[260px] rounded-md border-2 border-dashed border-blue-500/30 bg-blue-50/50 opacity-50"
       />
     );
   }
@@ -68,7 +68,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
     <div 
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center justify-between px-3 py-2 rounded-md border transition-all h-12 w-64 flex-shrink-0
+      className={`group flex items-center justify-between px-3 py-2 rounded-md border transition-all h-12 min-w-0 flex-1 max-w-[260px]
         ${isDragOverlay 
           ? 'cursor-grabbing bg-white/90 backdrop-blur-xl border-blue-200 shadow-xl shadow-black/10 scale-105 z-50 ring-1 ring-blue-500/20' 
           : 'bg-white border-[#E6E7EB] shadow-sm hover:border-gray-300 hover:shadow-md'
@@ -145,7 +145,7 @@ export function PinnedAgentsBar({ agents }: Props) {
   if (agents.length === 0) return null;
 
   return (
-    <div className="px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex items-center gap-4 overflow-x-auto no-scrollbar">
+    <div className="px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex min-w-0 items-center gap-4 overflow-hidden">
       <div className="flex flex-col shrink-0">
         <h3 className="text-[11px] font-bold text-[#1F2328] uppercase tracking-wider flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -163,7 +163,7 @@ export function PinnedAgentsBar({ agents }: Props) {
         onDragCancel={() => setActiveId(null)}
       >
         <SortableContext items={displayAgents.map(a => a.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex gap-3">
+          <div className="flex min-w-0 flex-1 gap-3 overflow-hidden">
             {displayAgents.map(agent => (
               <PinnedAgentCard key={agent.id} agent={agent} />
             ))}

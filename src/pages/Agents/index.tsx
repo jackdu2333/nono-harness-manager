@@ -105,7 +105,7 @@ export default function AgentsPage() {
       if (statusFilter === 'active' && a.status !== 'active') return false;
       if (statusFilter === 'pending' && getAgentGroup(a) !== 'candidate') return false;
       if (statusFilter === 'ignored' && getAgentGroup(a) !== 'ignored') return false;
-      if (statusFilter === 'broken' && a.status === 'broken') return false; 
+      if (statusFilter === 'broken' && a.status !== 'broken') return false; 
     }
 
     return true;
@@ -165,7 +165,7 @@ export default function AgentsPage() {
 
       <PinnedAgentsBar agents={pinnedAgents} />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-w-0 overflow-hidden">
         {/* Left: Agent List */}
         <div className="w-[440px] xl:w-[480px] flex-shrink-0 flex flex-col border-r border-[#E6E7EB] bg-white overflow-hidden shadow-sm z-0">
           <div className="flex-1 overflow-y-auto">
@@ -248,7 +248,7 @@ export default function AgentsPage() {
         </div>
 
         {/* Right: Detail Inspector */}
-        <div className="flex-1 flex flex-col bg-transparent overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col bg-transparent overflow-hidden">
           <AgentDetailInspector 
             agent={selectedAgent} 
             onDiscoverSystem={handleDiscoverSystem}
