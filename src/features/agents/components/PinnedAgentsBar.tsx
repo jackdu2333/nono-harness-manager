@@ -59,7 +59,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
       <div 
         ref={setNodeRef}
         style={style}
-        className="h-[72px] rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 opacity-50"
+        className="h-12 w-64 rounded-md border-2 border-dashed border-blue-500/30 bg-blue-50/50 opacity-50 flex-shrink-0"
       />
     );
   }
@@ -68,48 +68,49 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
     <div 
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center justify-between p-2.5 rounded-lg border transition-all h-[72px]
+      className={`group flex items-center justify-between px-3 py-2 rounded-md border transition-all h-12 w-64 flex-shrink-0
         ${isDragOverlay 
-          ? 'cursor-grabbing bg-card/90 backdrop-blur-xl border-primary/30 shadow-2xl shadow-black/20 dark:shadow-black/50 scale-105 z-50 ring-1 ring-primary/20' 
-          : 'bg-card border-border/40 shadow-sm hover:border-border hover:shadow'
+          ? 'cursor-grabbing bg-white/90 backdrop-blur-xl border-blue-200 shadow-xl shadow-black/10 scale-105 z-50 ring-1 ring-blue-500/20' 
+          : 'bg-white border-[#E6E7EB] shadow-sm hover:border-gray-300 hover:shadow-md'
         }
       `}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         <div 
           {...attributes} 
           {...listeners}
-          className={`p-1 -ml-1 rounded transition-colors
-            ${isDragOverlay ? 'text-primary cursor-grabbing' : 'text-muted-foreground/30 hover:text-muted-foreground hover:bg-secondary cursor-grab'}
+          className={`-ml-1 rounded transition-colors
+            ${isDragOverlay ? 'text-blue-500 cursor-grabbing' : 'text-[#8B8E98]/40 hover:text-[#8B8E98] cursor-grab'}
           `}
         >
-          <GripVertical className="w-4 h-4" />
+          <GripVertical className="w-3.5 h-3.5" />
         </div>
-        <div className={`p-2 rounded-md flex items-center justify-center w-9 h-9 shrink-0 ${brand.bgClass} ${isDragOverlay ? 'shadow-md ring-2 ring-primary/20' : ''}`}>
+        <div className={`p-1 rounded flex items-center justify-center w-6 h-6 shrink-0 ${brand.bgClass} ${isDragOverlay ? 'shadow-sm' : ''}`}>
           {brand.imgSrc ? (
-            <img src={brand.imgSrc} alt={agent.name} className="w-5 h-5 object-contain" />
+            <img src={brand.imgSrc} alt={agent.name} className="w-4 h-4 object-contain" />
           ) : (
-            Icon && <Icon className={`w-5 h-5 ${brand.textClass}`} />
+            Icon && <Icon className={`w-4 h-4 ${brand.textClass}`} />
           )}
         </div>
-        <div className="min-w-0">
-          <div className={`font-semibold text-sm truncate ${isDragOverlay ? 'text-primary' : 'text-foreground'}`} title={agent.name}>{agent.name}</div>
-          <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-            <span className="truncate max-w-[80px]">{agent.type || 'Agent'}</span>
-            <span className="shrink-0">•</span>
-            <span className={`shrink-0 ${agent.status === 'active' ? 'text-green-500' : ''}`}>{agent.status || 'Unknown'}</span>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className={`font-semibold text-xs truncate max-w-[80px] ${isDragOverlay ? 'text-blue-600' : 'text-[#1F2328]'}`} title={agent.name}>{agent.name}</span>
+            <span className="text-[10px] text-[#8B8E98] shrink-0">·</span>
+            <span className="text-[10px] text-[#8B8E98] shrink-0">{agent.type || 'Agent'}</span>
+            <span className="text-[10px] text-[#8B8E98] shrink-0">·</span>
+            <span className={`text-[10px] shrink-0 ${isLaunchable ? 'text-[#22C55E]' : 'text-[#8B8E98]'}`}>{isLaunchable ? '可启动' : '不可启动'}</span>
           </div>
         </div>
       </div>
       <button
         onClick={() => isLaunchable && !isDragOverlay && launchAgent(agent.id)}
         disabled={!isLaunchable || isDragOverlay}
-        className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ml-3
-          ${isDragOverlay ? 'bg-primary text-primary-foreground shadow-md' : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary'}
+        className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors ml-2
+          ${isDragOverlay ? 'bg-blue-500 text-white shadow-sm' : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white disabled:opacity-30 disabled:hover:bg-blue-50 disabled:hover:text-blue-600'}
         `}
         title={isLaunchable ? "启动" : "不可启动"}
       >
-        <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />
+        <Play className="w-2.5 h-2.5 ml-0.5 fill-current" />
       </button>
     </div>
   );
@@ -136,23 +137,23 @@ export function PinnedAgentsBar({ agents }: Props) {
     }
   };
 
-  // Max 3 agents as requested
-  const displayAgents = agents.slice(0, 3);
+  // Max 4 agents
+  const displayAgents = agents.slice(0, 4);
 
   const activeAgent = activeId ? displayAgents.find(a => a.id === activeId) : null;
 
   if (agents.length === 0) return null;
 
   return (
-    <div className="px-6 py-3 border-b border-border bg-card/30 shrink-0 relative z-20">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-          常用启动 (Pinned)
+    <div className="px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex items-center gap-4 overflow-x-auto no-scrollbar">
+      <div className="flex flex-col shrink-0">
+        <h3 className="text-[11px] font-bold text-[#1F2328] uppercase tracking-wider flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          常用启动
         </h3>
-        {agents.length > 3 && (
-          <span className="text-[11px] text-primary cursor-pointer hover:underline">查看全部</span>
-        )}
       </div>
+      
+      <div className="w-px h-6 bg-[#E6E7EB] shrink-0"></div>
       
       <DndContext 
         sensors={sensors} 
@@ -162,7 +163,7 @@ export function PinnedAgentsBar({ agents }: Props) {
         onDragCancel={() => setActiveId(null)}
       >
         <SortableContext items={displayAgents.map(a => a.id)} strategy={horizontalListSortingStrategy}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex gap-3">
             {displayAgents.map(agent => (
               <PinnedAgentCard key={agent.id} agent={agent} />
             ))}
