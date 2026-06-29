@@ -57,6 +57,9 @@
   * {
     @apply border-border;
   }
+  html, body, #root {
+    @apply h-full w-full overflow-hidden m-0 p-0;
+  }
   body {
     @apply bg-background text-foreground antialiased;
   }
