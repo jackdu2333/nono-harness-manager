@@ -32,8 +32,8 @@ const navGroups: NavGroup[] = [
     label: 'Overview',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/', navKey: 'dashboard' },
-      { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Soon' },
-      { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Soon' },
+      { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Beta' },
+      { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Beta' },
     ],
   },
   {
@@ -42,14 +42,14 @@ const navGroups: NavGroup[] = [
       { icon: Layers, label: 'Skills', path: '/skills', navKey: 'skills', status: 'Beta' },
       { icon: Cpu, label: 'Agents', path: '/agents', navKey: 'agents', status: 'Beta' },
       { icon: Box, label: 'MCP', path: '/mcp', navKey: 'mcp', status: 'Beta' },
-      { icon: Database, label: 'Memory', path: '/memory', navKey: 'memory', status: 'Soon' },
-      { icon: FileCode2, label: 'Knowledge', path: '/knowledge', navKey: 'knowledge', status: 'Soon' },
+      { icon: Database, label: 'Memory', path: '/memory', navKey: 'memory', status: 'Beta' },
+      { icon: FileCode2, label: 'Knowledge', path: '/knowledge', navKey: 'knowledge', status: 'Beta' },
     ],
   },
   {
     label: 'Work',
     items: [
-      { icon: FolderKanban, label: 'Projects', path: '/projects', navKey: 'projects', status: 'Soon' },
+      { icon: FolderKanban, label: 'Projects', path: '/projects', navKey: 'projects', status: 'Beta' },
       { icon: ShieldCheck, label: 'Proposals', path: '/proposals', navKey: 'proposals', status: 'Beta' },
     ],
   },
