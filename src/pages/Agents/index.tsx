@@ -129,7 +129,7 @@ export default function AgentsPage() {
     .slice(0, 4);
 
   return (
-    <div className="flex flex-col h-full bg-[#F7F7F8] relative overflow-hidden text-[#1F2328]">
+    <div className="flex flex-col h-full w-full min-w-0 bg-[#F7F7F8] relative overflow-hidden text-[#1F2328]">
       {scanMessage && (
         <div className={'px-4 py-2 text-xs border-b border-border ' + (scanMessage.includes('错误') || scanMessage.includes('失败') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600')}>
           {scanMessage}

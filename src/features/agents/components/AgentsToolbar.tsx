@@ -41,7 +41,7 @@ export function AgentsToolbar({
 }: Props) {
   
   return (
-    <div className="flex-shrink-0 border-b border-[#E6E7EB] bg-white z-10 px-6 py-4 flex flex-col gap-4 shadow-sm">
+    <div className="flex-shrink-0 w-full min-w-0 border-b border-[#E6E7EB] bg-white z-10 px-6 py-4 flex flex-col gap-4 shadow-sm overflow-hidden">
       {/* Row 1: Title, Subtitle & Primary Actions / Stats */}
       <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-4">
         

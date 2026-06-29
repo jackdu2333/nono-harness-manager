@@ -145,7 +145,7 @@ export function PinnedAgentsBar({ agents }: Props) {
   if (agents.length === 0) return null;
 
   return (
-    <div className="px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex min-w-0 items-center gap-4 overflow-hidden">
+    <div className="w-full min-w-0 px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex items-center gap-4 overflow-hidden">
       <div className="flex flex-col shrink-0">
         <h3 className="text-[11px] font-bold text-[#1F2328] uppercase tracking-wider flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
