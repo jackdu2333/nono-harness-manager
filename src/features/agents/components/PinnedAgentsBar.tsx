@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Agent } from '../types';
 import { Play, GripVertical } from 'lucide-react';
 import { getAgentBrandStyles } from '../utils/brandStyles';
@@ -170,9 +171,12 @@ export function PinnedAgentsBar({ agents }: Props) {
           </div>
         </SortableContext>
 
-        <DragOverlay dropAnimation={dropAnimationConfig}>
-          {activeAgent ? <PinnedAgentCard agent={activeAgent} isDragOverlay /> : null}
-        </DragOverlay>
+        {createPortal(
+          <DragOverlay dropAnimation={dropAnimationConfig}>
+            {activeAgent ? <PinnedAgentCard agent={activeAgent} isDragOverlay /> : null}
+          </DragOverlay>,
+          document.body
+        )}
       </DndContext>
     </div>
   );

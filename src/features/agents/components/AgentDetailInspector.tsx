@@ -100,8 +100,8 @@ export function AgentDetailInspector({ agent, onDiscoverSystem, onOpenScanDrawer
             )}
           </div>
           <div className="min-w-0 flex-1 pt-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold tracking-tight">{agent.name}</h2>
+            <div className="flex flex-wrap items-center gap-3 mb-2 min-w-0">
+              <h2 className="text-2xl font-bold tracking-tight truncate max-w-full" title={agent.name}>{agent.name}</h2>
               
               <span className="text-xs uppercase font-medium text-[#8B8E98] bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                 {agent.type || 'Agent'}
@@ -193,8 +193,8 @@ export function AgentDetailInspector({ agent, onDiscoverSystem, onOpenScanDrawer
 
 function FactItem({ label, value, fullWidth = false }: { label: string, value: string, fullWidth?: boolean }) {
   return (
-    <div className={`flex flex-col gap-1 ${fullWidth ? 'col-span-2 lg:col-span-4' : ''}`}>
-      <span className="text-[#8B8E98]">{label}</span>
+    <div className={`flex flex-col gap-1 min-w-0 ${fullWidth ? 'col-span-2 lg:col-span-4' : ''}`}>
+      <span className="text-[#8B8E98] truncate">{label}</span>
       <span className="font-mono text-[#1F2328] bg-gray-50 px-2 py-1 rounded border border-[#E6E7EB] truncate" title={value}>
         {value}
       </span>
