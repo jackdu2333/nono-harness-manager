@@ -306,11 +306,11 @@ npm run harness:cli:build
 
 ## Screenshots
 
-Screenshots will be added soon.
-
-| Skills | Analytics | Settings |
-|---|---|---|
-| _Skills page screenshot_ | _Analytics page screenshot_ | _Settings page screenshot_ |
+| Dashboard | Analytics |
+|:---:|:---:|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Analytics](docs/screenshots/analytics.png) |
+| **Skills** | **Settings** |
+| ![Skills](docs/screenshots/skills.png) | ![Settings](docs/screenshots/settings.png) |
 
 ---
 
