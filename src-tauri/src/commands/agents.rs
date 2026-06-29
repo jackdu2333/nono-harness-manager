@@ -3,6 +3,7 @@ use crate::models::agent::Agent;
 use crate::scanner::agent_scanner::scan_agents_in_dir as scan_logic;
 use crate::security::path_guard::validate_scan_root;
 use chrono::Utc;
+use serde_json::json;
 use sqlx::SqlitePool;
 use tauri::{command, State};
 use uuid::Uuid;
@@ -43,6 +44,16 @@ pub async fn add_agent(
         last_launched_at: None,
         created_at: now.clone(),
         updated_at: now,
+        agent_key: None,
+        cli_path: None,
+        log_path: None,
+        bundle_id: None,
+        detection_source: Some("manual".to_string()),
+        confidence: Some("verified".to_string()),
+        evidence_json: Some(json!({"signals": ["用户手动添加"]}).to_string()),
+        is_user_confirmed: true,
+        is_ignored: false,
+        last_detected_at: None,
     };
     agent_repository::add_agent(&*pool, &agent)
         .await
@@ -93,10 +104,10 @@ pub async fn scan_system_agents(pool: State<'_, SqlitePool>) -> Result<usize, St
     let count = new_agents.len();
 
     for agent in new_agents {
-        let existing = agent_repository::list_agents(&*pool)
-            .await
-            .unwrap_or_default();
-        if !existing.iter().any(|a| same_agent_identity(a, &agent)) {
+        // 按 agent_key upsert：已存在则更新路径/置信度/evidence，不覆盖 is_user_confirmed / is_ignored
+        if agent.agent_key.is_some() {
+            let _ = agent_repository::upsert_agent_by_key(&*pool, &agent).await;
+        } else {
             let _ = agent_repository::add_agent(&*pool, &agent).await;
         }
     }
@@ -194,9 +205,12 @@ fn parse_open_app_command(command: Option<&str>) -> Option<String> {
 }
 
 fn same_agent_identity(existing: &Agent, discovered: &Agent) -> bool {
-    existing.name == discovered.name
-        && existing.app_path == discovered.app_path
-        && existing.launch_command == discovered.launch_command
+    // 优先按 agent_key 去重
+    if let (Some(ek), Some(dk)) = (&existing.agent_key, &discovered.agent_key) {
+        return ek == dk;
+    }
+    // fallback: name + config_path
+    existing.name == discovered.name && existing.config_path == discovered.config_path
 }
 
 #[command]
@@ -226,6 +240,25 @@ pub async fn open_config_dir(id: String, pool: State<'_, SqlitePool>) -> Result<
     }
 
     Ok(())
+}
+
+/// 确认候选 agent，将其从 pending 提升为 active
+#[command]
+pub async fn confirm_agent_candidate(
+    id: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), String> {
+    agent_repository::confirm_candidate(&*pool, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 忽略候选 agent，标记为 ignored
+#[command]
+pub async fn ignore_agent_candidate(id: String, pool: State<'_, SqlitePool>) -> Result<(), String> {
+    agent_repository::ignore_candidate(&*pool, &id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

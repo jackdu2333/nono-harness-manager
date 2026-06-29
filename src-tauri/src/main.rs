@@ -59,6 +59,8 @@ fn main() {
             commands::agents::scan_system_agents,
             commands::agents::launch_agent,
             commands::agents::open_config_dir,
+            commands::agents::confirm_agent_candidate,
+            commands::agents::ignore_agent_candidate,
             commands::mcp::list_mcp_servers,
             commands::mcp::add_mcp_server,
             commands::mcp::delete_mcp_server,

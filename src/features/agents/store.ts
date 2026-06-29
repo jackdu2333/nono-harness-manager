@@ -17,6 +17,8 @@ interface AgentsState {
   scanSystemAgents: () => Promise<number>;
   launchAgent: (id: string) => Promise<void>;
   openConfigDir: (id: string) => Promise<void>;
+  confirmCandidate: (id: string) => Promise<void>;
+  ignoreCandidate: (id: string) => Promise<void>;
   reorderAgents: (activeId: string, overId: string) => void;
 }
 
@@ -133,5 +135,15 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
       console.error('Failed to open config dir:', err);
       throw err;
     }
+  },
+
+  confirmCandidate: async (id) => {
+    await api.confirmAgentCandidate(id);
+    await get().fetchAgents();
+  },
+
+  ignoreCandidate: async (id) => {
+    await api.ignoreAgentCandidate(id);
+    await get().fetchAgents();
   }
 }));

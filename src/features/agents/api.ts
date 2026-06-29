@@ -40,3 +40,11 @@ export async function launchAgent(id: string): Promise<void> {
 export async function openConfigDir(id: string): Promise<void> {
   return invoke('open_config_dir', { id });
 }
+
+export async function confirmAgentCandidate(id: string): Promise<void> {
+  return invoke('confirm_agent_candidate', { id });
+}
+
+export async function ignoreAgentCandidate(id: string): Promise<void> {
+  return invoke('ignore_agent_candidate', { id });
+}
