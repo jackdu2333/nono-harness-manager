@@ -41,3 +41,9 @@ harness.db
 # OS files
 Thumbs.db
 ehthumbs.db
+
+# Local project docs (not for GitHub)
+原始需求文档/
+项目文档/
+项目测试文档/
+conversations/
