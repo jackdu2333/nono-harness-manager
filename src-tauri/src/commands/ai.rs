@@ -406,6 +406,7 @@ pub struct ChatResponse {
     pub message: ChatMessage,
     pub evidence: Vec<String>,
     pub suggested_actions: Vec<String>,
+    pub tool_calls_summary: Option<Vec<crate::ai::tool_runtime::ToolCallSummary>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -495,35 +496,9 @@ pub async fn send_chat_message(
 ) -> Result<ChatResponse, String> {
     let now = Utc::now().to_rfc3339();
 
-    // 1. Get AI settings
-    let settings_row = sqlx::query(
-        "SELECT enabled, provider, base_url, model, api_key_ref FROM ai_settings WHERE id = 'default'"
-    )
-    .fetch_optional(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    let (enabled, provider, base_url, model, api_key_ref) = match settings_row {
-        Some(r) => (
-            r.get::<i32, _>("enabled") != 0,
-            r.get::<String, _>("provider"),
-            r.get::<Option<String>, _>("base_url"),
-            r.get::<Option<String>, _>("model"),
-            r.get::<Option<String>, _>("api_key_ref"),
-        ),
-        None => return Err("AI 未配置。请先在 Settings 中配置 AI 提供商。".to_string()),
-    };
-
-    if !enabled {
-        return Err("AI 助手未启用。请在 Settings 中启用。".to_string());
-    }
-
-    let api_key = api_key_ref
-        .and_then(|s| decode_api_key(&s))
-        .ok_or_else(|| "API Key 未设置或无效".to_string())?;
-
-    let base = base_url.unwrap_or_else(|| "https://api.openai.com".to_string());
-    let model_name = model.unwrap_or_else(|| "gpt-4o-mini".to_string());
+    // 1. Build LLM client from pool
+    let client = crate::ai::llm_client::LlmClient::from_pool(&pool).await?;
+    let capabilities = client.get_capabilities();
 
     // 2. Get or create session
     let session_id = match input.session_id {
@@ -557,130 +532,103 @@ pub async fn send_chat_message(
     .await
     .map_err(|e| e.to_string())?;
 
-    // 4. Gather context from safe tools
-    let skills_count = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE is_archived = 0")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
-    let agents_count = sqlx::query("SELECT COUNT(*) as cnt FROM agents")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
-    let mcp_count = sqlx::query("SELECT COUNT(*) as cnt FROM mcp_servers")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
-    let pending_proposals = sqlx::query(
-        "SELECT COUNT(*) as cnt FROM intelligence_proposals WHERE status IN ('pending_review', 'pending_manual_review')"
-    )
-    .fetch_one(&*pool).await.map_err(|e| e.to_string())?
-    .get::<i64, _>("cnt");
-
-    let system_prompt = format!(
+    // 4. Construct system prompt
+    let system_prompt = if capabilities.supports_tools {
         "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
-        当前 Harness 状态：\n\
-        - Skills: {} 个活跃\n\
-        - Agents: {} 个\n\
-        - MCP Servers: {} 个\n\
-        - 待处理 Proposals: {} 个\n\n\
-        你的职责范围：\n\
-        - 汇总 Harness 当前状态\n\
-        - 分析哪些资源需要处理\n\
-        - 解释 Skills / Agents / MCP 的问题\n\
-        - 生成整理建议\n\
-        - 建议创建 proposal\n\
-        - 引导用户下一步操作\n\n\
-        你不负责：\n\
-        - 直接执行 shell\n\
-        - 直接删除文件\n\
-        - 直接启动 Agent\n\
-        - 直接修改数据库\n\
-        - 绕过 Trust Policy\n\n\
+        你拥有查询本地 Skills、Agents、MCP 状态和创建治理提案的工具能力。请在需要时调用相应工具获取准确信息或发起提案。\n\
         所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
-        使用中文回答。",
-        skills_count, agents_count, mcp_count, pending_proposals
-    );
+        使用中文回答。".to_string()
+    } else {
+        let mut prompt = "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
+        所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
+        使用中文回答。".to_string();
 
-    // 5. Load conversation history
+        let summary_tool_ctx = crate::ai::safe_tools::ToolContext { pool: &*pool };
+        if let Ok(summary_out) = crate::ai::tools::dashboard::get_dashboard_summary(&summary_tool_ctx).await {
+            prompt = format!("{}\n\n当前 Harness 状态统计：\n{}", prompt, summary_out.data);
+        }
+        prompt
+    };
+
+    // 5. Load conversation history (LIMIT 10 to avoid token bloat)
     let history = sqlx::query(
-        "SELECT role, content FROM ai_messages WHERE session_id = ? ORDER BY created_at ASC LIMIT 20",
+        "SELECT role, content FROM ai_messages WHERE session_id = ? ORDER BY created_at ASC LIMIT 10",
     )
     .bind(&session_id)
     .fetch_all(&*pool)
     .await
     .map_err(|e| e.to_string())?;
 
-    let mut messages: Vec<serde_json::Value> = vec![
-        serde_json::json!({"role": "system", "content": system_prompt}),
+    let mut messages = vec![
+        crate::ai::llm_client::LlmMessage {
+            role: "system".to_string(),
+            content: Some(system_prompt),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        }
     ];
+
     for row in &history {
         let role: String = row.get("role");
         let content: String = row.get("content");
-        messages.push(serde_json::json!({"role": role, "content": content}));
+        messages.push(crate::ai::llm_client::LlmMessage {
+            role,
+            content: Some(content),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        });
     }
 
-    // 6. Call LLM API
-    let api_url = match provider.as_str() {
-        "openai_compatible" => {
-            let b = base.trim_end_matches('/');
-            format!("{}/v1/chat/completions", b)
-        }
-        "ollama" => {
-            let b = base.trim_end_matches('/');
-            format!("{}/v1/chat/completions", b)
-        }
-        _ => return Err(format!("不支持的 provider: {}", provider)),
+    // 6. Execute Tool Loop / LLM Completion
+    let tool_ctx = crate::ai::safe_tools::ToolContext { pool: &*pool };
+    let (final_content, tool_calls_json, tool_calls_summary) = if capabilities.supports_tools {
+        let loop_res = crate::ai::tool_runtime::run_tool_loop(
+            client.clone(),
+            messages,
+            Some(session_id.clone()),
+            &tool_ctx,
+        ).await?;
+        
+        let t_json = if loop_res.records.is_empty() {
+            None
+        } else {
+            serde_json::to_string(&loop_res.records).ok()
+        };
+
+        let t_summary = if loop_res.records.is_empty() {
+            None
+        } else {
+            Some(loop_res.records.iter().map(|rec| crate::ai::tool_runtime::ToolCallSummary {
+                tool_name: rec.tool_name.clone(),
+                success: rec.success,
+                duration_ms: rec.duration_ms,
+                round: rec.round,
+                summary: rec.result_summary.clone(),
+            }).collect::<Vec<_>>())
+        };
+
+        (loop_res.final_content.unwrap_or_default(), t_json, t_summary)
+    } else {
+        let response = client.chat_completion(messages, None).await?;
+        let mut text = response.content.unwrap_or_default();
+        text = format!(
+            "*当前模型不支持工具调用，只能基于 Dashboard 摘要回答。请切换支持 function calling 的模型以启用治理能力。*\n\n{}",
+            text
+        );
+        (text, None, None)
     };
 
-    let request_body = serde_json::json!({
-        "model": model_name,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2000,
-    });
-
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| format!("HTTP client error: {}", e))?;
-
-    let response = client
-        .post(&api_url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("LLM API 调用失败: {}", e))?;
-
-    let status = response.status();
-    let response_body: serde_json::Value = response.json().await
-        .map_err(|e| format!("Failed to parse LLM response: {}", e))?;
-
-    if !status.is_success() {
-        let error_msg = response_body
-            .get("error")
-            .and_then(|e| e.get("message"))
-            .and_then(|m| m.as_str())
-            .unwrap_or("Unknown error");
-        return Err(format!("LLM API 错误 ({}): {}", status, error_msg));
-    }
-
-    let assistant_content = response_body
-        .get("choices")
-        .and_then(|c| c.as_array())
-        .and_then(|c| c.first())
-        .and_then(|c| c.get("message"))
-        .and_then(|m| m.get("content"))
-        .and_then(|c| c.as_str())
-        .unwrap_or("抱歉，我无法生成回答。")
-        .to_string();
-
-    // 7. Save assistant message
+    // 7. Save assistant response
     let assistant_msg_id = uuid::Uuid::new_v4().to_string();
     sqlx::query(
-        "INSERT INTO ai_messages (id, session_id, role, content, created_at) VALUES (?, ?, 'assistant', ?, ?)",
+        "INSERT INTO ai_messages (id, session_id, role, content, tool_calls_json, created_at) VALUES (?, ?, 'assistant', ?, ?, ?)",
     )
     .bind(&assistant_msg_id)
     .bind(&session_id)
-    .bind(&assistant_content)
+    .bind(&final_content)
+    .bind(&tool_calls_json)
     .bind(&Utc::now().to_rfc3339())
     .execute(&*pool)
     .await
@@ -703,19 +651,34 @@ pub async fn send_chat_message(
     .bind(&log_id)
     .bind(&session_id)
     .bind(&serde_json::json!({"user_message": input.content}).to_string())
-    .bind(&serde_json::json!({"response_length": assistant_content.len()}).to_string())
+    .bind(&serde_json::json!({"response_length": final_content.len()}).to_string())
     .bind(&Utc::now().to_rfc3339())
     .execute(&*pool)
     .await
     .map_err(|_| ())
-        .ok();
+    .ok();
+
+    let skills_count = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE is_archived = 0")
+        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .get::<i64, _>("cnt");
+    let agents_count = sqlx::query("SELECT COUNT(*) as cnt FROM agents")
+        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .get::<i64, _>("cnt");
+    let mcp_count = sqlx::query("SELECT COUNT(*) as cnt FROM mcp_servers")
+        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .get::<i64, _>("cnt");
+    let pending_proposals = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM intelligence_proposals WHERE status IN ('pending_review', 'pending_manual_review', 'pending')"
+    )
+    .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+    .get::<i64, _>("cnt");
 
     Ok(ChatResponse {
         message: ChatMessage {
             id: assistant_msg_id,
             session_id,
             role: "assistant".to_string(),
-            content: assistant_content,
+            content: final_content,
             tool_calls_json: None,
             created_at: Utc::now().to_rfc3339(),
         },
@@ -729,5 +692,6 @@ pub async fn send_chat_message(
             "查看 Skills 页面".to_string(),
             "查看 Proposals 页面".to_string(),
         ],
+        tool_calls_summary,
     })
 }

@@ -271,6 +271,8 @@ async fn get_context(
             .fetch_one(pool)
             .await
             .map_err(|e| e.to_string())?;
+            let env_raw = row.get::<Option<String>, _>("env");
+            let env_sanitized = sanitize_env_value(env_raw.as_deref());
             Ok(json!({
                 "resource_type": "mcp_server",
                 "id": row.get::<String, _>("id"),
@@ -284,7 +286,7 @@ async fn get_context(
                     "source_path": row.get::<Option<String>, _>("source_path"),
                     "command": row.get::<String, _>("command"),
                     "args": row.get::<Option<String>, _>("args"),
-                    "env": row.get::<Option<String>, _>("env")
+                    "env": env_sanitized
                 },
                 "evidence_files": row.get::<Option<String>, _>("evidence_files")
             }))
@@ -541,3 +543,19 @@ fn is_safe_excerpt_file(skill_dir: &Path, candidate: &PathBuf) -> bool {
         .and_then(|name| name.to_str())
         .is_some_and(|name| SAFE_CONTEXT_FILES.contains(&name))
 }
+
+fn sanitize_env_value(env_str: Option<&str>) -> Option<String> {
+    let env_str = env_str?;
+    if env_str.is_empty() {
+        return Some(env_str.to_string());
+    }
+    if let Ok(mut obj) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(env_str) {
+        for val in obj.values_mut() {
+            *val = serde_json::Value::String("***".to_string());
+        }
+        serde_json::to_string(&obj).ok()
+    } else {
+        Some("***".to_string())
+    }
+}
+

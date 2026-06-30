@@ -16,3 +16,11 @@ export async function rejectIntelligenceProposal(proposalId: string): Promise<vo
 export async function rollbackIntelligenceProposal(proposalId: string): Promise<void> {
   return invoke('rollback_intelligence_proposal', { proposalId, actor: 'user' });
 }
+
+export async function acknowledgeIntelligenceProposal(proposalId: string): Promise<void> {
+  return invoke('acknowledge_intelligence_proposal', { proposalId, actor: 'user' });
+}
+
+export async function createSafeRewriteProposal(blockedProposalId: string): Promise<IntelligenceProposal> {
+  return invoke('create_safe_rewrite_proposal', { blockedProposalId, actor: 'user' });
+}

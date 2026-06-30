@@ -24,4 +24,7 @@ export interface IntelligenceProposal {
   auto_applied?: number | null;
   trust_policy_version?: string | null;
   resource_name?: string | null;
+  acknowledged_at?: string | null;
+  acknowledged_by?: string | null;
+  linked_from?: string | null;
 }

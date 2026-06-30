@@ -7,6 +7,7 @@ mod models;
 mod scanner;
 mod security;
 mod trust_policy;
+mod ai;
 
 use tauri::Manager;
 
@@ -74,6 +75,8 @@ fn main() {
             commands::harness_api::apply_intelligence_proposal,
             commands::harness_api::reject_intelligence_proposal,
             commands::harness_api::rollback_intelligence_proposal,
+            commands::harness_api::acknowledge_intelligence_proposal,
+            commands::harness_api::create_safe_rewrite_proposal,
             commands::local_assets::list_memory_sources,
             commands::local_assets::add_memory_source,
             commands::local_assets::list_memory_files,

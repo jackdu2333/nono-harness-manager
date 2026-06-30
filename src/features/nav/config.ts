@@ -37,6 +37,7 @@ export const NAV_PATH_TO_KEY: Record<string, NavItemKey> = Object.fromEntries(
 ) as Record<string, NavItemKey>;
 
 export const SETTING_KEY = 'sidebar_visible_nav_items';
+export const COLLAPSED_SETTING_KEY = 'sidebar_collapsed';
 
 // 跨组件同步事件：Settings 保存后通知 AppShell 立即刷新
 export const SIDEBAR_NAV_UPDATED_EVENT = 'sidebar-nav-updated';
@@ -87,13 +88,24 @@ async function loadVisibleNavItems(): Promise<Set<NavItemKey>> {
   }
 }
 
+async function loadSidebarCollapsed(): Promise<boolean> {
+  try {
+    const raw = await invoke<string | null>('get_setting', { key: COLLAPSED_SETTING_KEY });
+    return raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
 /// React hook：管理 sidebar 可见性配置
 export function useSidebarNav() {
   const [visible, setVisible] = useState<Set<NavItemKey>>(new Set(DEFAULT_VISIBLE));
+  const [collapsed, setCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setVisible(await loadVisibleNavItems());
+    setCollapsed(await loadSidebarCollapsed());
     setLoading(false);
   }, []);
 
@@ -114,5 +126,13 @@ export function useSidebarNav() {
     setVisible(new Set(items));
   }, []);
 
-  return { visible, loading, save, refresh };
+  const saveCollapsed = useCallback(async (isCollapsed: boolean) => {
+    await invoke('set_setting', {
+      key: COLLAPSED_SETTING_KEY,
+      value: isCollapsed ? 'true' : 'false',
+    });
+    setCollapsed(isCollapsed);
+  }, []);
+
+  return { visible, collapsed, loading, save, saveCollapsed, refresh };
 }

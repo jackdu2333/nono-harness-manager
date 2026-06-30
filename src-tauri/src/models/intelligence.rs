@@ -42,4 +42,7 @@ pub struct IntelligenceProposal {
     pub trust_policy_version: Option<String>,
     #[sqlx(default)]
     pub resource_name: Option<String>,
+    pub acknowledged_at: Option<String>,
+    pub acknowledged_by: Option<String>,
+    pub linked_from: Option<String>,
 }

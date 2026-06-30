@@ -91,10 +91,19 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface ToolCallSummary {
+  tool_name: string;
+  success: boolean;
+  duration_ms: number;
+  round: number;
+  summary: string;
+}
+
 export interface ChatResponse {
   message: ChatMessage;
   evidence: string[];
   suggested_actions: string[];
+  tool_calls_summary: ToolCallSummary[] | null;
 }
 
 export async function createChatSession(): Promise<ChatSession> {
