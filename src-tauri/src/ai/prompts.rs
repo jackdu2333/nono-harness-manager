@@ -12,6 +12,8 @@ pub enum AiTaskContext {
 
 pub fn detect_task_context(input: &str, current_route: Option<&str>) -> AiTaskContext {
     let route = current_route.unwrap_or_default().to_lowercase();
+
+    // 1. 明确资源页面：route 优先（处于该页面即默认对应语境）
     if route.starts_with("/skills") {
         return AiTaskContext::SkillAnalysis;
     }
@@ -30,10 +32,10 @@ pub fn detect_task_context(input: &str, current_route: Option<&str>) -> AiTaskCo
     if route.starts_with("/health") {
         return AiTaskContext::HealthCheck;
     }
-    if route == "/" || route.starts_with("/dashboard") {
-        return AiTaskContext::GovernancePlan;
-    }
 
+    // 2. 非资源页（含 Dashboard）：先按用户输入关键词识别专业语境
+    //    P0 修复：原逻辑 route=="/" 在此之前即 return GovernancePlan，
+    //    导致首页问 Skill/Agent/MCP/Proposal 吃不到专业提示词。
     let text = input.to_lowercase();
     if contains_any(&text, &["skill", "技能", "skill.md", "prompt"]) {
         return AiTaskContext::SkillAnalysis;
@@ -44,7 +46,7 @@ pub fn detect_task_context(input: &str, current_route: Option<&str>) -> AiTaskCo
     ) {
         return AiTaskContext::AgentAnalysis;
     }
-    if contains_any(&text, &["mcp", "server", "tool", "command"]) {
+    if contains_any(&text, &["mcp", "工具服务器", "server 配置"]) {
         return AiTaskContext::McpAnalysis;
     }
     if contains_any(&text, &["proposal", "提案", "待确认", "已拦截", "自动应用"]) {
@@ -60,6 +62,12 @@ pub fn detect_task_context(input: &str, current_route: Option<&str>) -> AiTaskCo
         return AiTaskContext::GovernancePlan;
     }
 
+    // 3. Dashboard 路由无关键词命中时，默认治理规划语境
+    if route == "/" || route.starts_with("/dashboard") {
+        return AiTaskContext::GovernancePlan;
+    }
+
+    // 4. 其他路由：通用语境
     AiTaskContext::General
 }
 
@@ -105,14 +113,25 @@ fn safety_boundary_prompt() -> String {
         "- 所有写操作必须走 proposal。",
         "- 所有 proposal 必须经过 Trust Policy。",
         "- 不能声称已执行未执行的动作。",
-        "- 不能把建议说成事实。",
+        "- 你可以给出明确判断，但必须区分：已由工具结果确认的事实 / 基于规则或统计推断的判断 / 需要用户确认的建议。",
         "- 不能展示 token / key / secret / password / env 原始值。",
     ]
     .join("\n")
 }
 
 fn tool_use_prompt(supports_tools: bool) -> String {
-    let mut lines = vec![
+    if !supports_tools {
+        return [
+            "# Tool Capability Limitation Prompt",
+            "- 当前模型不支持工具调用（function calling）。",
+            "- 你不能声称已经调用 get_skill_analysis、get_agent_analysis、get_mcp_analysis 或 create_governance_proposal。",
+            "- 你只能基于 Dashboard 摘要回答，不要编造当前资源状态。",
+            "- 如果问题需要实时资源状态，必须提示用户切换支持 function calling 的模型。",
+        ]
+        .join("\n");
+    }
+
+    [
         "# Tool Use Prompt",
         "- 当前状态类问题必须优先调用工具。",
         "- 不要凭记忆回答当前 Harness 状态。",
@@ -121,12 +140,13 @@ fn tool_use_prompt(supports_tools: bool) -> String {
         "- MCP 问题优先调用 get_mcp_analysis。",
         "- Proposal 问题优先调用 list_pending_proposals。",
         "- 总览类问题优先调用 get_dashboard_summary。",
-        "- 需要创建建议时调用 create_governance_proposal。",
-    ];
-    if !supports_tools {
-        lines.push("当前模型不支持工具调用，只能基于 Dashboard 摘要回答。若要启用治理能力，请切换支持 function calling 的模型。");
-    }
-    lines.join("\n")
+        "- 只有在以下情况才能调用 create_governance_proposal：",
+        "  1. 用户明确要求创建 proposal / 生成治理建议 / 写入 Proposals。",
+        "  2. 用户点击了明确的创建类动作。",
+        "  3. 你已通过工具确认 resource_type、resource_id、proposal_type、proposed_changes 均合法。",
+        "- 如果用户只是询问、分析、解释，不要直接创建 proposal，只在输出中列出“可创建的 Proposal 建议”。",
+    ]
+    .join("\n")
 }
 
 fn task_specific_prompt(task_context: AiTaskContext) -> Option<String> {
@@ -135,9 +155,9 @@ fn task_specific_prompt(task_context: AiTaskContext) -> Option<String> {
         AiTaskContext::AgentAnalysis => Some(agent_governance_prompt()),
         AiTaskContext::McpAnalysis => Some(mcp_governance_prompt()),
         AiTaskContext::ProposalReview => Some(proposal_review_prompt()),
-        AiTaskContext::AnalyticsExplain => None,
-        AiTaskContext::HealthCheck => None,
-        AiTaskContext::GovernancePlan => None,
+        AiTaskContext::AnalyticsExplain => Some(analytics_interpretation_prompt()),
+        AiTaskContext::HealthCheck => Some(health_check_prompt()),
+        AiTaskContext::GovernancePlan => Some(governance_plan_prompt()),
         AiTaskContext::General => None,
     }
 }
@@ -176,6 +196,45 @@ fn proposal_review_prompt() -> String {
         "分析 Proposals 时按优先级处理：1. 待确认 2. 已拦截 3. 已自动应用。",
         "对 blocked proposal：解释拦截原因、指出危险字段、判断是否可生成安全版本，可以建议拒绝、标记已了解、生成安全版本。",
         "禁止强行应用 blocked proposal，禁止绕过 Trust Policy，禁止把 blocked 转 applied。",
+    ]
+    .join("\n")
+}
+
+fn governance_plan_prompt() -> String {
+    [
+        "# Governance Plan Prompt",
+        "当用户询问今天、下一步、计划、治理优先级时，综合 Skills、Agents、MCP、Proposals、Analytics、Health 状态判断。",
+        "优先级规则：",
+        "1. 待确认 Proposals 优先于历史记录。",
+        "2. 已拦截 Proposals 属于安全风险，必须解释原因。",
+        "3. 高使用低质量 Skills 优先优化。",
+        "4. broken / candidate Agents 优先诊断。",
+        "5. MCP 配置异常优先于元数据美化。",
+        "6. Health critical / error 优先处理。",
+        "输出 Top 3 建议动作，不要列过长清单。",
+    ]
+    .join("\n")
+}
+
+fn analytics_interpretation_prompt() -> String {
+    [
+        "# Analytics Interpretation Prompt",
+        "当用户询问使用次数、日志、统计、趋势时，必须使用“日志推断使用次数 / 可观测使用次数”口径。",
+        "禁止：",
+        "- 不要写“真实调用次数”。",
+        "- 不要把 Harness UI 点击等同于 Skill / MCP 实际调用。",
+        "- 不要把低置信度日志推断说成确定事实。",
+        "请解释统计口径、时间范围、置信度和局限。",
+    ]
+    .join("\n")
+}
+
+fn health_check_prompt() -> String {
+    [
+        "# Health Check Prompt",
+        "当用户询问健康、体检、异常时，按严重程度处理：critical / error → warning → info。",
+        "优先解释：影响范围、风险原因、是否需要用户确认、是否适合创建 proposal。",
+        "不要直接执行修复动作，只建议创建 proposal 或引导用户手动确认。",
     ]
     .join("\n")
 }
@@ -244,5 +303,42 @@ mod tests {
         assert!(prompt.contains("apply_proposal"));
         assert!(prompt.contains("bypass_trust_policy"));
         assert!(prompt.contains("不能展示 token / key / secret / password / env 原始值"));
+    }
+
+    #[test]
+    fn dashboard_keyword_overrides_dashboard_route_for_skill() {
+        assert_eq!(
+            detect_task_context("哪些 Skill 最值得整理？", Some("/")),
+            AiTaskContext::SkillAnalysis
+        );
+    }
+
+    #[test]
+    fn dashboard_keyword_overrides_dashboard_route_for_agent() {
+        assert_eq!(
+            detect_task_context("哪些 Agent 识别有问题？", Some("/")),
+            AiTaskContext::AgentAnalysis
+        );
+    }
+
+    #[test]
+    fn dashboard_without_keyword_defaults_to_governance_plan() {
+        assert_eq!(
+            detect_task_context("今天我该处理什么？", Some("/")),
+            AiTaskContext::GovernancePlan
+        );
+    }
+
+    #[test]
+    fn governance_plan_prompt_is_loaded() {
+        let prompt = build_system_prompt(AiTaskContext::GovernancePlan, true);
+        assert!(prompt.contains("Governance Plan Prompt"));
+    }
+
+    #[test]
+    fn non_tool_prompt_does_not_instruct_tool_calls() {
+        let prompt = build_system_prompt(AiTaskContext::SkillAnalysis, false);
+        assert!(!prompt.contains("必须优先调用工具"));
+        assert!(prompt.contains("当前模型不支持工具调用"));
     }
 }
