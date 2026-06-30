@@ -116,7 +116,12 @@ async fn list_resources(pool: &SqlitePool, resource_type: Option<&str>) -> Resul
     };
     let mut combined_resources = Vec::new();
     for t in types {
-        let raw = nono_harness_manager_lib::ai::tools::resource::list_resources_raw(t.to_string(), 50, pool).await?;
+        let raw = nono_harness_manager_lib::ai::tools::resource::list_resources_raw(
+            t.to_string(),
+            50,
+            pool,
+        )
+        .await?;
         if let Some(arr) = raw.get("resources").and_then(|r| r.as_array()) {
             combined_resources.extend(arr.clone());
         }
@@ -131,7 +136,12 @@ async fn get_context(
     resource_type: &str,
     resource_id: &str,
 ) -> Result<Value, String> {
-    let raw = nono_harness_manager_lib::ai::tools::resource::get_resource_context_raw(resource_type.to_string(), resource_id.to_string(), pool).await?;
+    let raw = nono_harness_manager_lib::ai::tools::resource::get_resource_context_raw(
+        resource_type.to_string(),
+        resource_id.to_string(),
+        pool,
+    )
+    .await?;
     let sanitized = nono_harness_manager_lib::ai::safe_tools::redact_sensitive_fields(raw);
     Ok(sanitized)
 }
@@ -146,14 +156,16 @@ async fn create_proposal(
     let ctx = nono_harness_manager_lib::ai::safe_tools::ToolContext { pool };
     let changes_val: Value = serde_json::from_str(proposed_changes)
         .map_err(|e| format!("proposed_changes must be JSON: {}", e))?;
-    let out = nono_harness_manager_lib::ai::tools::proposal::create_governance_proposal_with_creator(
-        resource_type.to_string(),
-        resource_id.to_string(),
-        proposal_type.to_string(),
-        changes_val,
-        "harness_cli",
-        &ctx,
-    ).await?;
+    let out =
+        nono_harness_manager_lib::ai::tools::proposal::create_governance_proposal_with_creator(
+            resource_type.to_string(),
+            resource_id.to_string(),
+            proposal_type.to_string(),
+            changes_val,
+            "harness_cli",
+            &ctx,
+        )
+        .await?;
     Ok(out.data)
 }
 

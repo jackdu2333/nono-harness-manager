@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MessageSquare, Send, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReactMarkdown from 'react-markdown';
@@ -29,6 +30,7 @@ const PLACEHOLDER_MESSAGES = [
 ];
 
 export function ChatBox({ onNavigate }: ChatBoxProps) {
+  const location = useLocation();
   const [messages, setMessages] = useState<ChatMessageWithSummary[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -166,7 +168,11 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const response: ChatResponse = await sendChatMessage(content, sessionId ?? undefined);
+      const response: ChatResponse = await sendChatMessage(
+        content,
+        sessionId ?? undefined,
+        location.pathname,
+      );
       setSessionId(response.message.session_id);
       
       const assistantMsg: ChatMessageWithSummary = {

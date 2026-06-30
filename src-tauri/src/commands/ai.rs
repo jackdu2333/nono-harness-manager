@@ -412,6 +412,7 @@ pub struct ChatResponse {
 pub struct SendChatInput {
     pub session_id: Option<String>,
     pub content: String,
+    pub current_route: Option<String>,
 }
 
 fn build_chat_action_input(content: &str) -> serde_json::Value {
@@ -539,29 +540,26 @@ pub async fn send_chat_message(
     .await
     .map_err(|e| e.to_string())?;
 
-    // 4. Construct system prompt
-    let system_prompt = if capabilities.supports_tools {
-        "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
-        你拥有查询本地 Skills、Agents、MCP 状态和创建治理提案的工具能力。请在需要时调用相应工具获取准确信息或发起提案。\n\
-        所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
-        使用中文回答。".to_string()
-    } else {
-        let mut prompt =
-            "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
-        所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
-        使用中文回答。"
-                .to_string();
+    // 4. Construct system prompt from the native Prompt Policy.
+    let task_context =
+        crate::ai::prompts::detect_task_context(&input.content, input.current_route.as_deref());
+    let system_prompt =
+        crate::ai::prompts::build_system_prompt(task_context, capabilities.supports_tools);
 
+    let system_prompt = if capabilities.supports_tools {
+        system_prompt
+    } else {
         let summary_tool_ctx = crate::ai::safe_tools::ToolContext { pool: &*pool };
         if let Ok(summary_out) =
             crate::ai::tools::dashboard::get_dashboard_summary(&summary_tool_ctx).await
         {
-            prompt = format!(
+            format!(
                 "{}\n\n当前 Harness 状态统计：\n{}",
-                prompt, summary_out.data
-            );
+                system_prompt, summary_out.data
+            )
+        } else {
+            system_prompt
         }
-        prompt
     };
 
     // 5. Load conversation history (LIMIT 10 to avoid token bloat)

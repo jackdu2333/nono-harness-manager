@@ -121,8 +121,9 @@ export async function getChatMessages(sessionId: string): Promise<ChatMessage[]>
 export async function sendChatMessage(
   content: string,
   sessionId?: string,
+  currentRoute?: string,
 ): Promise<ChatResponse> {
   return invoke('send_chat_message', {
-    input: { session_id: sessionId ?? null, content },
+    input: { session_id: sessionId ?? null, content, current_route: currentRoute ?? null },
   });
 }
