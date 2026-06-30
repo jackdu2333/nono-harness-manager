@@ -1,5 +1,5 @@
 use crate::ai::safe_tools::{sanitize_output, ToolContext, ToolOutput};
-use serde_json::{json, Value, Map};
+use serde_json::{json, Map, Value};
 use sqlx::Row;
 
 pub fn sanitize_env_value(env_str: Option<&str>) -> Option<String> {
@@ -19,23 +19,29 @@ pub fn sanitize_env_value(env_str: Option<&str>) -> Option<String> {
 
 pub async fn get_mcp_analysis(ctx: &ToolContext<'_>) -> Result<ToolOutput, String> {
     let total = sqlx::query("SELECT COUNT(*) as cnt FROM mcp_servers")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     let active_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM mcp_servers WHERE status = 'active'")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     let rows = sqlx::query(
-        "SELECT id, name, description, command, args, env, status FROM mcp_servers LIMIT 15"
+        "SELECT id, name, description, command, args, env, status FROM mcp_servers LIMIT 15",
     )
-    .fetch_all(ctx.pool).await.map_err(|e| e.to_string())?;
+    .fetch_all(ctx.pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
     let mut servers = Vec::new();
     for r in rows {
         let env_raw = r.get::<Option<String>, _>("env");
         let env_sanitized = sanitize_env_value(env_raw.as_deref());
-        
+
         servers.push(json!({
             "id": r.get::<String, _>("id"),
             "name": r.get::<String, _>("name"),

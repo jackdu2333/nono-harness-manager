@@ -42,15 +42,27 @@ fn is_proposal_type_allowed(resource_type: &str, proposal_type: &str) -> bool {
     match resource_type {
         "skill" => matches!(
             proposal_type,
-            "update_metadata" | "improve_description" | "suggest_archive" | "suggest_merge" | "improve_ai_readiness"
+            "update_metadata"
+                | "improve_description"
+                | "suggest_archive"
+                | "suggest_merge"
+                | "improve_ai_readiness"
         ),
         "agent" => matches!(
             proposal_type,
-            "update_agent_metadata" | "suggest_agent_confirmation" | "suggest_agent_ignore" | "fix_agent_paths" | "explain_agent_launch_strategy" | "improve_agent_detection_rule"
+            "update_agent_metadata"
+                | "suggest_agent_confirmation"
+                | "suggest_agent_ignore"
+                | "fix_agent_paths"
+                | "explain_agent_launch_strategy"
+                | "improve_agent_detection_rule"
         ),
         "mcp_server" => matches!(
             proposal_type,
-            "update_mcp_metadata" | "suggest_mcp_health_fix" | "improve_mcp_description" | "improve_tool_schema"
+            "update_mcp_metadata"
+                | "suggest_mcp_health_fix"
+                | "improve_mcp_description"
+                | "improve_tool_schema"
         ),
         _ => false,
     }
@@ -58,9 +70,25 @@ fn is_proposal_type_allowed(resource_type: &str, proposal_type: &str) -> bool {
 
 fn has_forbidden_keys(value: &Value) -> bool {
     let forbidden_keys = [
-        "path", "source_path", "app_path", "cli_path", "config_path", "log_path",
-        "command", "args", "env", "launch_command", "enabled", "status", "delete",
-        "execute", "shell", "token", "api_key", "secret", "password"
+        "path",
+        "source_path",
+        "app_path",
+        "cli_path",
+        "config_path",
+        "log_path",
+        "command",
+        "args",
+        "env",
+        "launch_command",
+        "enabled",
+        "status",
+        "delete",
+        "execute",
+        "shell",
+        "token",
+        "api_key",
+        "secret",
+        "password",
     ];
 
     match value {
@@ -94,10 +122,8 @@ pub async fn create_governance_proposal(
     ctx: &ToolContext<'_>,
 ) -> Result<ToolOutput, String> {
     let proposed_changes_val = match proposed_changes {
-        Value::String(s) => {
-            serde_json::from_str::<Value>(&s)
-                .map_err(|e| format!("Invalid proposed_changes JSON string: {}", e))?
-        }
+        Value::String(s) => serde_json::from_str::<Value>(&s)
+            .map_err(|e| format!("Invalid proposed_changes JSON string: {}", e))?,
         other => other,
     };
 
@@ -124,7 +150,7 @@ pub async fn create_governance_proposal(
         r#"
         INSERT INTO intelligence_proposals
           (id, resource_type, resource_id, proposal_type, proposed_changes, status, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', 'ai_governance_agent', ?)
+        VALUES (?, ?, ?, ?, ?, 'pending', 'built_in_ai', ?)
         "#,
     )
     .bind(&id)

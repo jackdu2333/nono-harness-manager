@@ -1,10 +1,10 @@
+pub mod ai;
 pub mod commands;
 pub mod db;
 pub mod models;
 pub mod scanner;
 pub mod security;
 pub mod trust_policy;
-pub mod ai;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

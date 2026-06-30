@@ -1,6 +1,6 @@
 use crate::ai::safe_tools::{sanitize_output, ToolContext, ToolOutput};
-use crate::models::intelligence::{HarnessResourceContext, HarnessResourceSummary};
 use crate::ai::tools::mcp::sanitize_env_value;
+use crate::models::intelligence::{HarnessResourceContext, HarnessResourceSummary};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ pub async fn list_resources(
                 FROM skills
                 ORDER BY updated_at DESC
                 LIMIT ?
-                "#
+                "#,
             )
             .bind(limit)
             .fetch_all(ctx.pool)
@@ -68,7 +68,7 @@ pub async fn list_resources(
                 FROM mcp_servers
                 ORDER BY updated_at DESC
                 LIMIT ?
-                "#
+                "#,
             )
             .bind(limit)
             .fetch_all(ctx.pool)

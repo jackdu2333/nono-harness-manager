@@ -37,7 +37,9 @@ pub async fn list_harness_resources(
             "limit": 50
         });
         let output = crate::ai::safe_tools::call_tool("list_resources", args, &ctx).await?;
-        let resources = output.data.get("resources")
+        let resources = output
+            .data
+            .get("resources")
             .and_then(|r| r.as_array())
             .ok_or_else(|| "Invalid output from list_resources tool".to_string())?;
         for r in resources {
@@ -79,7 +81,7 @@ pub async fn create_intelligence_proposal(
 ) -> Result<IntelligenceProposal, String> {
     if !matches!(
         resource_type.as_str(),
-        "skill" | "mcp_server" | "memory_source" | "knowledge_base" | "project"
+        "skill" | "mcp_server" | "agent" | "memory_source" | "knowledge_base" | "project"
     ) {
         return Err("Unsupported resource type".to_string());
     }
@@ -260,10 +262,30 @@ pub async fn reject_intelligence_proposal(
 
 fn sanitize_proposal_changes(value: &Value) -> Value {
     let forbidden_keys = [
-        "path", "source_path", "app_path", "cli_path", "config_path", "log_path",
-        "command", "args", "env", "launch_command", "enabled", "status", "delete",
-        "execute", "shell", "token", "api_key", "secret", "password",
-        "authorization", "bearer", "access_token", "refresh_token", "cookie"
+        "path",
+        "source_path",
+        "app_path",
+        "cli_path",
+        "config_path",
+        "log_path",
+        "command",
+        "args",
+        "env",
+        "launch_command",
+        "enabled",
+        "status",
+        "delete",
+        "execute",
+        "shell",
+        "token",
+        "api_key",
+        "secret",
+        "password",
+        "authorization",
+        "bearer",
+        "access_token",
+        "refresh_token",
+        "cookie",
     ];
 
     match value {
@@ -313,21 +335,20 @@ pub async fn acknowledge_intelligence_proposal(
     let actor = actor.unwrap_or_else(|| "user".to_string());
     let now = Utc::now().to_rfc3339();
 
-    let status: Option<String> = sqlx::query_scalar(
-        "SELECT status FROM intelligence_proposals WHERE id = ?"
-    )
-    .bind(&proposal_id)
-    .fetch_optional(&*pool)
-    .await
-    .map_err(|e| e.to_string())?
-    .flatten();
+    let status: Option<String> =
+        sqlx::query_scalar("SELECT status FROM intelligence_proposals WHERE id = ?")
+            .bind(&proposal_id)
+            .fetch_optional(&*pool)
+            .await
+            .map_err(|e| e.to_string())?
+            .flatten();
 
     if status.as_deref() != Some("blocked") {
         return Err("Only blocked proposals can be acknowledged".to_string());
     }
 
     sqlx::query(
-        "UPDATE intelligence_proposals SET acknowledged_at = ?, acknowledged_by = ? WHERE id = ?"
+        "UPDATE intelligence_proposals SET acknowledged_at = ?, acknowledged_by = ? WHERE id = ?",
     )
     .bind(&now)
     .bind(&actor)
@@ -364,7 +385,7 @@ pub async fn create_safe_rewrite_proposal(
     let now = Utc::now().to_rfc3339();
 
     let proposal: IntelligenceProposal = sqlx::query_as::<_, IntelligenceProposal>(
-        "SELECT * FROM intelligence_proposals WHERE id = ?"
+        "SELECT * FROM intelligence_proposals WHERE id = ?",
     )
     .bind(&blocked_proposal_id)
     .fetch_optional(&*pool)
@@ -387,7 +408,10 @@ pub async fn create_safe_rewrite_proposal(
         _ => false,
     };
     if is_empty {
-        return Err("The proposal contains only high-risk changes and cannot generate a safe version.".to_string());
+        return Err(
+            "The proposal contains only high-risk changes and cannot generate a safe version."
+                .to_string(),
+        );
     }
 
     let sanitized_str = serde_json::to_string(&sanitized_val).unwrap_or_default();

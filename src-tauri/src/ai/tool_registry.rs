@@ -23,9 +23,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDefinition> {
 }
 
 pub fn find_tool(name: &str) -> Option<RegisteredTool> {
-    get_registered_tools()
-        .into_iter()
-        .find(|t| t.name == name)
+    get_registered_tools().into_iter().find(|t| t.name == name)
 }
 
 fn get_registered_tools() -> Vec<RegisteredTool> {

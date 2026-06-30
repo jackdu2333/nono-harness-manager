@@ -1,13 +1,13 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ai;
 mod commands;
 mod db;
 mod models;
 mod scanner;
 mod security;
 mod trust_policy;
-mod ai;
 
 use tauri::Manager;
 

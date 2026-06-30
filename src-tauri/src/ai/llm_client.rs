@@ -1,4 +1,4 @@
-use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
+use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{Row, SqlitePool};
@@ -85,7 +85,9 @@ pub struct LlmClient {
 
 fn decode_api_key(stored: &str) -> Option<String> {
     if let Some(encoded) = stored.strip_prefix(API_KEY_PREFIX) {
-        B64.decode(encoded.as_bytes()).ok().and_then(|b| String::from_utf8(b).ok())
+        B64.decode(encoded.as_bytes())
+            .ok()
+            .and_then(|b| String::from_utf8(b).ok())
     } else {
         None
     }
@@ -107,17 +109,22 @@ impl LlmClient {
         }
 
         let provider = row.get::<String, _>("provider");
-        let base_url = row.get::<Option<String>, _>("base_url")
+        let base_url = row
+            .get::<Option<String>, _>("base_url")
             .ok_or_else(|| "Base URL is required".to_string())?;
-        let model = row.get::<Option<String>, _>("model")
+        let model = row
+            .get::<Option<String>, _>("model")
             .ok_or_else(|| "Model name is required".to_string())?;
         let api_key_ref = row.get::<Option<String>, _>("api_key_ref");
 
         let api_key = if provider == "openai_compatible" {
-            let enc_key = api_key_ref.ok_or_else(|| "API Key is required for this provider".to_string())?;
+            let enc_key =
+                api_key_ref.ok_or_else(|| "API Key is required for this provider".to_string())?;
             decode_api_key(&enc_key).ok_or_else(|| "Failed to decode API Key".to_string())?
         } else {
-            api_key_ref.and_then(|k| decode_api_key(&k)).unwrap_or_default()
+            api_key_ref
+                .and_then(|k| decode_api_key(&k))
+                .unwrap_or_default()
         };
 
         let config = LlmConfig {
@@ -135,7 +142,10 @@ impl LlmClient {
             .build()
             .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
-        Ok(Self { config, http_client })
+        Ok(Self {
+            config,
+            http_client,
+        })
     }
 
     pub fn get_capabilities(&self) -> ProviderCapabilities {
@@ -143,7 +153,13 @@ impl LlmClient {
             true
         } else {
             let m = self.config.model.to_lowercase();
-            m.contains("llama3") || m.contains("qwen2.5") || m.contains("mistral") || m.contains("mixtral") || m.contains("command-r") || m.contains("gemini") || m.contains("gpt")
+            m.contains("llama3")
+                || m.contains("qwen2.5")
+                || m.contains("mistral")
+                || m.contains("mixtral")
+                || m.contains("command-r")
+                || m.contains("gemini")
+                || m.contains("gpt")
         };
 
         ProviderCapabilities {
@@ -177,50 +193,62 @@ impl LlmClient {
             }
         }
 
-        let mut req = self.http_client.post(&api_url)
+        let mut req = self
+            .http_client
+            .post(&api_url)
             .header("Content-Type", "application/json");
 
         if !self.config.api_key.is_empty() {
             req = req.header("Authorization", format!("Bearer {}", self.config.api_key));
         }
 
-        let response = req.json(&req_body)
+        let response = req
+            .json(&req_body)
             .send()
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
 
         let status = response.status();
-        let resp_val: Value = response.json().await
+        let resp_val: Value = response
+            .json()
+            .await
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
 
         if !status.is_success() {
-            let err_msg = resp_val.get("error")
+            let err_msg = resp_val
+                .get("error")
                 .and_then(|e| e.get("message"))
                 .and_then(|m| m.as_str())
                 .unwrap_or("Unknown server error");
             return Err(format!("LLM Error ({}): {}", status, err_msg));
         }
 
-        let choice = resp_val.get("choices")
+        let choice = resp_val
+            .get("choices")
             .and_then(|c| c.as_array())
             .and_then(|c| c.first())
             .ok_or_else(|| "Empty choices in response".to_string())?;
 
-        let message_val = choice.get("message")
+        let message_val = choice
+            .get("message")
             .ok_or_else(|| "Missing message in choice".to_string())?;
 
-        let content = message_val.get("content")
+        let content = message_val
+            .get("content")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let tool_calls: Option<Vec<ToolCall>> = message_val.get("tool_calls")
+        let tool_calls: Option<Vec<ToolCall>> = message_val
+            .get("tool_calls")
             .and_then(|tc| serde_json::from_value(tc.clone()).ok());
 
-        let finish_reason = choice.get("finish_reason")
+        let finish_reason = choice
+            .get("finish_reason")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let usage: Option<LlmUsage> = resp_val.get("usage")
+        let usage: Option<LlmUsage> = resp_val
+            .get("usage")
             .and_then(|u| serde_json::from_value(u.clone()).ok());
 
         Ok(LlmResponse {
@@ -351,8 +379,12 @@ mod tests {
 
         let choice = raw_json["choices"].as_array().unwrap().first().unwrap();
         let message_val = &choice["message"];
-        let content = message_val.get("content").and_then(|v| v.as_str()).map(|s| s.to_string());
-        let tool_calls: Option<Vec<ToolCall>> = message_val.get("tool_calls")
+        let content = message_val
+            .get("content")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let tool_calls: Option<Vec<ToolCall>> = message_val
+            .get("tool_calls")
             .and_then(|tc| serde_json::from_value(tc.clone()).ok());
 
         assert!(content.is_none());

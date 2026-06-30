@@ -4,23 +4,35 @@ use sqlx::Row;
 
 pub async fn get_agent_analysis(ctx: &ToolContext<'_>) -> Result<ToolOutput, String> {
     let total = sqlx::query("SELECT COUNT(*) as cnt FROM agents")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     let active_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM agents WHERE status = 'active'")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     let broken_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM agents WHERE status = 'broken'")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
-    let candidate_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM agents WHERE is_user_confirmed = 0 AND is_ignored = 0")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
+    let candidate_cnt = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM agents WHERE is_user_confirmed = 0 AND is_ignored = 0",
+    )
+    .fetch_one(ctx.pool)
+    .await
+    .map_err(|e| e.to_string())?
+    .get::<i64, _>("cnt");
 
     let ignored_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM agents WHERE is_ignored = 1")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     // Fetch lists with limit
@@ -28,7 +40,7 @@ pub async fn get_agent_analysis(ctx: &ToolContext<'_>) -> Result<ToolOutput, Str
         "SELECT id, name, agent_key, type, status, detection_source FROM agents WHERE status = 'broken' LIMIT 10"
     )
     .fetch_all(ctx.pool).await.map_err(|e| e.to_string())?;
-    
+
     let mut broken_list = Vec::new();
     for r in broken_rows {
         broken_list.push(json!({

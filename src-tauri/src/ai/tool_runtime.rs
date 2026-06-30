@@ -1,10 +1,9 @@
-use crate::ai::llm_client::{LlmClient, LlmMessage, ToolCall};
-use crate::ai::safe_tools::{call_tool, sanitize_output, ToolContext, ToolOutput};
+use crate::ai::llm_client::{LlmClient, LlmMessage};
+use crate::ai::safe_tools::{call_tool, sanitize_output, ToolContext};
 use crate::ai::tool_registry;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::SqlitePool;
 use std::time::{Duration, Instant};
 
 const MAX_TOOL_ROUNDS: usize = 2;
@@ -55,8 +54,9 @@ fn generate_summary(val: &Value) -> String {
             format!("Array with {} items", arr.len())
         }
         Value::String(s) => {
-            if s.len() > 60 {
-                format!("String: {}...", &s[..60])
+            let preview = s.chars().take(60).collect::<String>();
+            if s.chars().count() > 60 {
+                format!("String: {}...", preview)
             } else {
                 format!("String: {}", s)
             }
@@ -77,9 +77,11 @@ pub async fn run_tool_loop(
 
     while round <= MAX_TOOL_ROUNDS {
         let tools = tool_registry::get_all_tool_definitions();
-        
-        let response = client.chat_completion(messages.clone(), Some(tools)).await?;
-        
+
+        let response = client
+            .chat_completion(messages.clone(), Some(tools))
+            .await?;
+
         // If there are no tool calls, this is the final response.
         let Some(tool_calls) = response.tool_calls.as_ref() else {
             return Ok(ToolLoopResult {
@@ -109,14 +111,14 @@ pub async fn run_tool_loop(
 
         // Process up to 5 tool calls in this round
         let calls_to_process = tool_calls.iter().take(MAX_TOOL_CALLS_PER_ROUND);
-        
+
         for tool_call in calls_to_process {
             let start_time = Instant::now();
             let name = &tool_call.function.name;
             let args_str = &tool_call.function.arguments;
 
             let args_parsed: Result<Value, serde_json::Error> = serde_json::from_str(args_str);
-            
+
             let (success, tool_output, error_str, parsed_args) = match args_parsed {
                 Err(err) => {
                     let err_msg = format!("Arguments JSON parse failed: {}", err);
@@ -130,7 +132,12 @@ pub async fn run_tool_loop(
                     let args_clone = args.clone();
                     // Run the tool with timeout
                     let tool_future = call_tool(name, args, tool_ctx);
-                    let res = match tokio::time::timeout(Duration::from_secs(TOOL_TIMEOUT_SECS), tool_future).await {
+                    let res = match tokio::time::timeout(
+                        Duration::from_secs(TOOL_TIMEOUT_SECS),
+                        tool_future,
+                    )
+                    .await
+                    {
                         Err(_) => {
                             let err_msg = format!("timeout after {}s", TOOL_TIMEOUT_SECS);
                             let err_output = sanitize_output(json!({
@@ -146,9 +153,7 @@ pub async fn run_tool_loop(
                             }));
                             (false, err_output, Some(err))
                         }
-                        Ok(Ok(output)) => {
-                            (true, output, None)
-                        }
+                        Ok(Ok(output)) => (true, output, None),
                     };
                     (res.0, res.1, res.2, args_clone)
                 }
@@ -172,7 +177,11 @@ pub async fn run_tool_loop(
             let action_log_id = uuid::Uuid::new_v4().to_string();
             let input_json = serde_json::to_string(&parsed_args).unwrap_or_default();
             let output_json = serde_json::to_string(&tool_output.data).unwrap_or_default();
-            let risk_level = if name == "create_governance_proposal" { "medium" } else { "low" };
+            let risk_level = if name == "create_governance_proposal" {
+                "medium"
+            } else {
+                "low"
+            };
 
             let _ = sqlx::query(
                 r#"
@@ -217,7 +226,6 @@ pub async fn run_tool_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ai::llm_client::{LlmConfig, ProviderCapabilities};
 
     #[tokio::test]
     async fn test_tool_timeout_handling() {
@@ -242,6 +250,21 @@ mod tests {
         };
 
         assert_eq!(result.0, false);
-        assert!(result.1.data.get("error").unwrap().as_str().unwrap().contains("timeout"));
+        assert!(result
+            .1
+            .data
+            .get("error")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("timeout"));
+    }
+
+    #[test]
+    fn generate_summary_handles_multibyte_strings() {
+        let value = Value::String("中文内容".repeat(20));
+        let summary = generate_summary(&value);
+        assert!(summary.starts_with("String: 中文内容"));
+        assert!(summary.ends_with("..."));
     }
 }

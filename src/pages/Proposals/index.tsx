@@ -67,6 +67,19 @@ function canApplyProposal(proposal: IntelligenceProposal) {
   return proposal.resource_type === 'skill' || proposal.resource_type === 'mcp_server';
 }
 
+function collectProposalKeys(value: unknown): string[] {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(collectProposalKeys);
+  }
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => [
+    key,
+    ...collectProposalKeys(child),
+  ]);
+}
+
 function getBlockedGroup(proposal: IntelligenceProposal): 'repairable' | 'manual' | 'high_risk' {
   let changes: any = {};
   try {
@@ -84,7 +97,7 @@ function getBlockedGroup(proposal: IntelligenceProposal): 'repairable' | 'manual
     "delete", "execute", "shell", "env", "token", "api_key", "password", "secret", "authorization", "bearer"
   ];
 
-  const keys = Object.keys(changes);
+  const keys = collectProposalKeys(changes);
   const hasHighRisk = keys.some(k => highRiskKeys.includes(k));
   if (hasHighRisk) {
     return 'high_risk';

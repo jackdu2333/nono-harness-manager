@@ -1,8 +1,8 @@
+use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use tauri::{command, State};
-use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
 
 const API_KEY_PREFIX: &str = "enc:";
 
@@ -39,7 +39,8 @@ impl From<AiSettings> for AiSettingsResponse {
             provider: s.provider,
             base_url: s.base_url,
             model: s.model,
-            has_api_key: s.api_key_ref.is_some() && !s.api_key_ref.as_deref().unwrap_or("").is_empty(),
+            has_api_key: s.api_key_ref.is_some()
+                && !s.api_key_ref.as_deref().unwrap_or("").is_empty(),
             updated_at: s.updated_at,
         }
     }
@@ -63,9 +64,7 @@ pub struct TestConnectionResult {
 
 /// Get current AI settings (safe — no API key exposed)
 #[command]
-pub async fn get_ai_settings(
-    pool: State<'_, SqlitePool>,
-) -> Result<AiSettingsResponse, String> {
+pub async fn get_ai_settings(pool: State<'_, SqlitePool>) -> Result<AiSettingsResponse, String> {
     let row = sqlx::query(
         "SELECT id, enabled, provider, base_url, model, api_key_ref, created_at, updated_at FROM ai_settings WHERE id = 'default'"
     )
@@ -178,17 +177,13 @@ pub async fn set_ai_settings(
 
 /// Clear the stored API key
 #[command]
-pub async fn clear_ai_api_key(
-    pool: State<'_, SqlitePool>,
-) -> Result<(), String> {
+pub async fn clear_ai_api_key(pool: State<'_, SqlitePool>) -> Result<(), String> {
     let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE ai_settings SET api_key_ref = NULL, updated_at = ? WHERE id = 'default'",
-    )
-    .bind(&now)
-    .execute(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE ai_settings SET api_key_ref = NULL, updated_at = ? WHERE id = 'default'")
+        .bind(&now)
+        .execute(&*pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -201,7 +196,7 @@ pub async fn test_ai_provider_connection(
     model: String,
     api_key: String,
 ) -> Result<TestConnectionResult, String> {
-    if api_key.is_empty() {
+    if provider == "openai_compatible" && api_key.is_empty() {
         return Ok(TestConnectionResult {
             success: false,
             message: "API Key 未提供".to_string(),
@@ -310,7 +305,9 @@ pub async fn create_ai_task(
 ) -> Result<AiTask, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
-    let created_by = input.created_by.unwrap_or_else(|| "rule_engine".to_string());
+    let created_by = input
+        .created_by
+        .unwrap_or_else(|| "rule_engine".to_string());
 
     sqlx::query(
         r#"INSERT INTO ai_tasks (id, task_type, status, result_json, created_by, created_at, completed_at)
@@ -376,7 +373,9 @@ pub async fn list_ai_tasks(
 
 fn decode_api_key(stored: &str) -> Option<String> {
     if let Some(encoded) = stored.strip_prefix(API_KEY_PREFIX) {
-        B64.decode(encoded.as_bytes()).ok().and_then(|b| String::from_utf8(b).ok())
+        B64.decode(encoded.as_bytes())
+            .ok()
+            .and_then(|b| String::from_utf8(b).ok())
     } else {
         None
     }
@@ -417,9 +416,7 @@ pub struct SendChatInput {
 
 /// Create a new chat session
 #[command]
-pub async fn create_chat_session(
-    pool: State<'_, SqlitePool>,
-) -> Result<ChatSession, String> {
+pub async fn create_chat_session(pool: State<'_, SqlitePool>) -> Result<ChatSession, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
@@ -445,9 +442,7 @@ pub async fn create_chat_session(
 
 /// List chat sessions
 #[command]
-pub async fn list_chat_sessions(
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<ChatSession>, String> {
+pub async fn list_chat_sessions(pool: State<'_, SqlitePool>) -> Result<Vec<ChatSession>, String> {
     let rows = sqlx::query(
         "SELECT id, title, mode, created_at, updated_at FROM ai_sessions ORDER BY updated_at DESC LIMIT 50",
     )
@@ -455,13 +450,16 @@ pub async fn list_chat_sessions(
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(rows.into_iter().map(|r| ChatSession {
-        id: r.get("id"),
-        title: r.get("title"),
-        mode: r.get("mode"),
-        created_at: r.get("created_at"),
-        updated_at: r.get("updated_at"),
-    }).collect())
+    Ok(rows
+        .into_iter()
+        .map(|r| ChatSession {
+            id: r.get("id"),
+            title: r.get("title"),
+            mode: r.get("mode"),
+            created_at: r.get("created_at"),
+            updated_at: r.get("updated_at"),
+        })
+        .collect())
 }
 
 /// Get messages for a session
@@ -478,14 +476,17 @@ pub async fn get_chat_messages(
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(rows.into_iter().map(|r| ChatMessage {
-        id: r.get("id"),
-        session_id: r.get("session_id"),
-        role: r.get("role"),
-        content: r.get("content"),
-        tool_calls_json: r.get("tool_calls_json"),
-        created_at: r.get("created_at"),
-    }).collect())
+    Ok(rows
+        .into_iter()
+        .map(|r| ChatMessage {
+            id: r.get("id"),
+            session_id: r.get("session_id"),
+            role: r.get("role"),
+            content: r.get("content"),
+            tool_calls_json: r.get("tool_calls_json"),
+            created_at: r.get("created_at"),
+        })
+        .collect())
 }
 
 /// Send a chat message and get AI response via configured LLM
@@ -539,35 +540,50 @@ pub async fn send_chat_message(
         所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
         使用中文回答。".to_string()
     } else {
-        let mut prompt = "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
+        let mut prompt =
+            "你是 NoNo Harness Manager 的内置 AI 治理助手。你的职责是分析和治理本地 AI 资产。\n\n\
         所有写操作必须通过 proposal 工作流。回答时请提供 evidence 和 suggested actions。\n\
-        使用中文回答。".to_string();
+        使用中文回答。"
+                .to_string();
 
         let summary_tool_ctx = crate::ai::safe_tools::ToolContext { pool: &*pool };
-        if let Ok(summary_out) = crate::ai::tools::dashboard::get_dashboard_summary(&summary_tool_ctx).await {
-            prompt = format!("{}\n\n当前 Harness 状态统计：\n{}", prompt, summary_out.data);
+        if let Ok(summary_out) =
+            crate::ai::tools::dashboard::get_dashboard_summary(&summary_tool_ctx).await
+        {
+            prompt = format!(
+                "{}\n\n当前 Harness 状态统计：\n{}",
+                prompt, summary_out.data
+            );
         }
         prompt
     };
 
     // 5. Load conversation history (LIMIT 10 to avoid token bloat)
     let history = sqlx::query(
-        "SELECT role, content FROM ai_messages WHERE session_id = ? ORDER BY created_at ASC LIMIT 10",
+        r#"
+        SELECT role, content
+        FROM (
+          SELECT role, content, created_at
+          FROM ai_messages
+          WHERE session_id = ?
+          ORDER BY created_at DESC
+          LIMIT 10
+        )
+        ORDER BY created_at ASC
+        "#,
     )
     .bind(&session_id)
     .fetch_all(&*pool)
     .await
     .map_err(|e| e.to_string())?;
 
-    let mut messages = vec![
-        crate::ai::llm_client::LlmMessage {
-            role: "system".to_string(),
-            content: Some(system_prompt),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-        }
-    ];
+    let mut messages = vec![crate::ai::llm_client::LlmMessage {
+        role: "system".to_string(),
+        content: Some(system_prompt),
+        tool_calls: None,
+        tool_call_id: None,
+        name: None,
+    }];
 
     for row in &history {
         let role: String = row.get("role");
@@ -589,8 +605,9 @@ pub async fn send_chat_message(
             messages,
             Some(session_id.clone()),
             &tool_ctx,
-        ).await?;
-        
+        )
+        .await?;
+
         let t_json = if loop_res.records.is_empty() {
             None
         } else {
@@ -600,16 +617,26 @@ pub async fn send_chat_message(
         let t_summary = if loop_res.records.is_empty() {
             None
         } else {
-            Some(loop_res.records.iter().map(|rec| crate::ai::tool_runtime::ToolCallSummary {
-                tool_name: rec.tool_name.clone(),
-                success: rec.success,
-                duration_ms: rec.duration_ms,
-                round: rec.round,
-                summary: rec.result_summary.clone(),
-            }).collect::<Vec<_>>())
+            Some(
+                loop_res
+                    .records
+                    .iter()
+                    .map(|rec| crate::ai::tool_runtime::ToolCallSummary {
+                        tool_name: rec.tool_name.clone(),
+                        success: rec.success,
+                        duration_ms: rec.duration_ms,
+                        round: rec.round,
+                        summary: rec.result_summary.clone(),
+                    })
+                    .collect::<Vec<_>>(),
+            )
         };
 
-        (loop_res.final_content.unwrap_or_default(), t_json, t_summary)
+        (
+            loop_res.final_content.unwrap_or_default(),
+            t_json,
+            t_summary,
+        )
     } else {
         let response = client.chat_completion(messages, None).await?;
         let mut text = response.content.unwrap_or_default();
@@ -659,13 +686,19 @@ pub async fn send_chat_message(
     .ok();
 
     let skills_count = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE is_archived = 0")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
     let agents_count = sqlx::query("SELECT COUNT(*) as cnt FROM agents")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
     let mcp_count = sqlx::query("SELECT COUNT(*) as cnt FROM mcp_servers")
-        .fetch_one(&*pool).await.map_err(|e| e.to_string())?
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
     let pending_proposals = sqlx::query(
         "SELECT COUNT(*) as cnt FROM intelligence_proposals WHERE status IN ('pending_review', 'pending_manual_review', 'pending')"
@@ -679,7 +712,7 @@ pub async fn send_chat_message(
             session_id,
             role: "assistant".to_string(),
             content: final_content,
-            tool_calls_json: None,
+            tool_calls_json,
             created_at: Utc::now().to_rfc3339(),
         },
         evidence: vec![

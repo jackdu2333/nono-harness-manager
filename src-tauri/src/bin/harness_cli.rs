@@ -549,7 +549,8 @@ fn sanitize_env_value(env_str: Option<&str>) -> Option<String> {
     if env_str.is_empty() {
         return Some(env_str.to_string());
     }
-    if let Ok(mut obj) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(env_str) {
+    if let Ok(mut obj) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(env_str)
+    {
         for val in obj.values_mut() {
             *val = serde_json::Value::String("***".to_string());
         }
@@ -558,4 +559,3 @@ fn sanitize_env_value(env_str: Option<&str>) -> Option<String> {
         Some("***".to_string())
     }
 }
-

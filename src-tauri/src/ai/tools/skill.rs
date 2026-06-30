@@ -5,23 +5,35 @@ use sqlx::Row;
 pub async fn get_skill_analysis(ctx: &ToolContext<'_>) -> Result<ToolOutput, String> {
     // 1. Fetch counts
     let total = sqlx::query("SELECT COUNT(*) as cnt FROM skills")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     let needs_review_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE needs_review = 1")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
-    let needs_improvement_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE needs_improvement = 1")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
+    let needs_improvement_cnt =
+        sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE needs_improvement = 1")
+            .fetch_one(ctx.pool)
+            .await
+            .map_err(|e| e.to_string())?
+            .get::<i64, _>("cnt");
 
-    let duplicate_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE duplicate_group_id IS NOT NULL")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
-        .get::<i64, _>("cnt");
+    let duplicate_cnt =
+        sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE duplicate_group_id IS NOT NULL")
+            .fetch_one(ctx.pool)
+            .await
+            .map_err(|e| e.to_string())?
+            .get::<i64, _>("cnt");
 
     let archived_cnt = sqlx::query("SELECT COUNT(*) as cnt FROM skills WHERE is_archived = 1")
-        .fetch_one(ctx.pool).await.map_err(|e| e.to_string())?
+        .fetch_one(ctx.pool)
+        .await
+        .map_err(|e| e.to_string())?
         .get::<i64, _>("cnt");
 
     // 2. Fetch lists (with limits)
