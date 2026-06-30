@@ -121,6 +121,25 @@ pub async fn create_governance_proposal(
     proposed_changes: Value,
     ctx: &ToolContext<'_>,
 ) -> Result<ToolOutput, String> {
+    create_governance_proposal_with_creator(
+        resource_type,
+        resource_id,
+        proposal_type,
+        proposed_changes,
+        "built_in_ai",
+        ctx,
+    )
+    .await
+}
+
+pub async fn create_governance_proposal_with_creator(
+    resource_type: String,
+    resource_id: String,
+    proposal_type: String,
+    proposed_changes: Value,
+    created_by: &str,
+    ctx: &ToolContext<'_>,
+) -> Result<ToolOutput, String> {
     let proposed_changes_val = match proposed_changes {
         Value::String(s) => serde_json::from_str::<Value>(&s)
             .map_err(|e| format!("Invalid proposed_changes JSON string: {}", e))?,
@@ -150,7 +169,7 @@ pub async fn create_governance_proposal(
         r#"
         INSERT INTO intelligence_proposals
           (id, resource_type, resource_id, proposal_type, proposed_changes, status, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', 'built_in_ai', ?)
+        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
         "#,
     )
     .bind(&id)
@@ -158,6 +177,7 @@ pub async fn create_governance_proposal(
     .bind(&resource_id)
     .bind(&proposal_type)
     .bind(&proposed_changes_str)
+    .bind(created_by)
     .bind(&now)
     .execute(ctx.pool)
     .await

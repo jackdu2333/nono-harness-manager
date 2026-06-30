@@ -2,7 +2,7 @@ use crate::ai::safe_tools::{sanitize_output, ToolContext, ToolOutput};
 use crate::ai::tools::mcp::sanitize_env_value;
 use crate::models::intelligence::{HarnessResourceContext, HarnessResourceSummary};
 use serde_json::{json, Value};
-use sqlx::Row;
+use sqlx::{Row, SqlitePool};
 use std::path::{Path, PathBuf};
 
 const SAFE_CONTEXT_MAX_CHARS: usize = 2048;
@@ -29,6 +29,15 @@ pub async fn list_resources(
     limit: i64,
     ctx: &ToolContext<'_>,
 ) -> Result<ToolOutput, String> {
+    let raw = list_resources_raw(resource_type, limit, ctx.pool).await?;
+    Ok(sanitize_output(raw))
+}
+
+pub async fn list_resources_raw(
+    resource_type: String,
+    limit: i64,
+    pool: &SqlitePool,
+) -> Result<Value, String> {
     let limit = limit.min(50).max(1);
     let mut resources = Vec::new();
 
@@ -43,7 +52,7 @@ pub async fn list_resources(
                 "#,
             )
             .bind(limit)
-            .fetch_all(ctx.pool)
+            .fetch_all(pool)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -71,7 +80,7 @@ pub async fn list_resources(
                 "#,
             )
             .bind(limit)
-            .fetch_all(ctx.pool)
+            .fetch_all(pool)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -100,7 +109,7 @@ pub async fn list_resources(
                 "#
             )
             .bind(limit)
-            .fetch_all(ctx.pool)
+            .fetch_all(pool)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -125,7 +134,7 @@ pub async fn list_resources(
         _ => return Err(format!("Unsupported resource type: {}", resource_type)),
     }
 
-    Ok(sanitize_output(json!({ "resources": resources })))
+    Ok(json!({ "resources": resources }))
 }
 
 pub async fn get_resource_context(
@@ -133,6 +142,15 @@ pub async fn get_resource_context(
     resource_id: String,
     ctx: &ToolContext<'_>,
 ) -> Result<ToolOutput, String> {
+    let raw = get_resource_context_raw(resource_type, resource_id, ctx.pool).await?;
+    Ok(sanitize_output(raw))
+}
+
+pub async fn get_resource_context_raw(
+    resource_type: String,
+    resource_id: String,
+    pool: &SqlitePool,
+) -> Result<Value, String> {
     match resource_type.as_str() {
         "skill" => {
             let row = sqlx::query(
@@ -143,7 +161,7 @@ pub async fn get_resource_context(
                 "#,
             )
             .bind(&resource_id)
-            .fetch_one(ctx.pool)
+            .fetch_one(pool)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -158,7 +176,7 @@ pub async fn get_resource_context(
                 .get::<Option<String>, _>("evidence_files")
                 .or(context_evidence);
 
-            let context = json!({
+            Ok(json!({
                 "resource": {
                     "resource_type": "skill",
                     "id": row.get::<String, _>("id"),
@@ -179,8 +197,7 @@ pub async fn get_resource_context(
                     "excerpt_evidence_files": safe_excerpt.as_ref().map(|excerpt| excerpt.evidence_files.clone())
                 },
                 "evidence_files": evidence_files
-            });
-            Ok(sanitize_output(context))
+            }))
         }
         "mcp_server" => {
             let row = sqlx::query(
@@ -191,14 +208,14 @@ pub async fn get_resource_context(
                 "#,
             )
             .bind(&resource_id)
-            .fetch_one(ctx.pool)
+            .fetch_one(pool)
             .await
             .map_err(|e| e.to_string())?;
 
             let env_raw = row.get::<Option<String>, _>("env");
             let env_sanitized = sanitize_env_value(env_raw.as_deref());
 
-            let context = json!({
+            Ok(json!({
                 "resource": {
                     "resource_type": "mcp_server",
                     "id": row.get::<String, _>("id"),
@@ -219,8 +236,7 @@ pub async fn get_resource_context(
                     "env": env_sanitized
                 },
                 "evidence_files": row.get::<Option<String>, _>("evidence_files")
-            });
-            Ok(sanitize_output(context))
+            }))
         }
         "agent" => {
             let row = sqlx::query(
@@ -234,7 +250,7 @@ pub async fn get_resource_context(
                 "#,
             )
             .bind(&resource_id)
-            .fetch_one(ctx.pool)
+            .fetch_one(pool)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -248,7 +264,7 @@ pub async fn get_resource_context(
             );
             let agent_key = row.get::<Option<String>, _>("agent_key");
 
-            let context = json!({
+            Ok(json!({
                 "resource": {
                     "resource_type": "agent",
                     "id": row.get::<String, _>("id"),
@@ -285,8 +301,7 @@ pub async fn get_resource_context(
                         .is_some_and(|key| LOG_ADAPTER_SUPPORTED_AGENT_KEYS.contains(&key)),
                     "evidence_signals": evidence_signals(row.get::<Option<String>, _>("evidence_json"))
                 }
-            });
-            Ok(sanitize_output(context))
+            }))
         }
         _ => Err(format!("Unsupported resource type: {}", resource_type)),
     }
