@@ -1,11 +1,13 @@
 import { create } from 'zustand';
-import { Skill, SkillSource, SkillView } from './types';
+import { Skill, SkillAnalysisFilters, SkillAnalysisOverview, SkillSource, SkillView } from './types';
 import * as api from './api';
 import { detectDuplicates } from './utils/duplicateDetector';
 
 interface SkillsState {
   sources: SkillSource[];
   skills: Skill[];
+  analysisOverview: SkillAnalysisOverview | null;
+  analysisFilters: SkillAnalysisFilters;
   currentView: SkillView;
   sourceFilter: string[];
   clientFilter: string[];
@@ -16,6 +18,7 @@ interface SkillsState {
   duplicateReasons: Record<string, string[]>;
   isLoadingSources: boolean;
   isLoadingSkills: boolean;
+  isLoadingAnalysis: boolean;
   isScanning: boolean;
 
   fetchSources: () => Promise<void>;
@@ -23,6 +26,19 @@ interface SkillsState {
   deleteSource: (id: string) => Promise<void>;
   scanSource: (id: string) => Promise<number>;
   fetchSkills: () => Promise<void>;
+  fetchAnalysis: (filters?: SkillAnalysisFilters) => Promise<void>;
+  setAnalysisFilters: (filters: SkillAnalysisFilters) => void;
+  createAnalysisProposal: (
+    skillId: string,
+    proposalType:
+      | 'skill_metadata_improvement'
+      | 'skill_example_improvement'
+      | 'skill_boundary_improvement'
+      | 'skill_archive_recommendation'
+      | 'skill_merge_recommendation'
+      | 'skill_agent_binding_recommendation',
+    proposedChanges: Record<string, unknown>,
+  ) => Promise<void>;
   generateDescription: (skillId: string) => Promise<string>;
   updateDescription: (skillId: string, description: string) => Promise<void>;
   setView: (view: SkillView) => void;
@@ -48,6 +64,8 @@ interface SkillsState {
 export const useSkillsStore = create<SkillsState>((set, get) => ({
   sources: [],
   skills: [],
+  analysisOverview: null,
+  analysisFilters: {},
   currentView: 'all',
   sourceFilter: [],
   clientFilter: [],
@@ -57,6 +75,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   duplicateReasons: {},
   isLoadingSources: false,
   isLoadingSkills: false,
+  isLoadingAnalysis: false,
   isScanning: false,
 
   fetchSources: async () => {
@@ -114,6 +133,24 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     } finally {
       set({ isLoadingSkills: false });
     }
+  },
+
+  fetchAnalysis: async (filters) => {
+    const nextFilters = filters ?? get().analysisFilters;
+    set({ isLoadingAnalysis: true, analysisFilters: nextFilters });
+    try {
+      const analysisOverview = await api.getSkillAnalysisOverview(nextFilters);
+      set({ analysisOverview });
+    } finally {
+      set({ isLoadingAnalysis: false });
+    }
+  },
+
+  setAnalysisFilters: (filters) => set({ analysisFilters: filters }),
+
+  createAnalysisProposal: async (skillId, proposalType, proposedChanges) => {
+    await api.createSkillAnalysisProposal(skillId, proposalType, proposedChanges);
+    await get().fetchAnalysis();
   },
 
   generateDescription: async (skillId) => {

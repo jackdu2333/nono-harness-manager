@@ -52,6 +52,7 @@ fn main() {
             commands::skills::mark_duplicate,
             commands::skills::record_skill_usage,
             commands::skills::delete_skill_source_file,
+            commands::skills::get_skill_analysis_overview,
             commands::agents::list_agents,
             commands::agents::add_agent,
             commands::agents::delete_agent,

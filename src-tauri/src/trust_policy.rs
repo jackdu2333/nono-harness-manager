@@ -39,6 +39,15 @@ const ALLOWED_PROPOSAL_TYPES: &[&str] = &[
     "mcp_description_update",
 ];
 
+const REVIEW_ONLY_SKILL_PROPOSAL_TYPES: &[&str] = &[
+    "skill_metadata_improvement",
+    "skill_example_improvement",
+    "skill_boundary_improvement",
+    "skill_archive_recommendation",
+    "skill_merge_recommendation",
+    "skill_agent_binding_recommendation",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiskLevel {
     Low,
@@ -137,6 +146,16 @@ pub fn assess_proposal_risk(
         return TrustPolicyDecision {
             risk_level: RiskLevel::Medium,
             reasons: vec!["agent proposals are review-only and cannot auto apply".to_string()],
+            can_auto_apply: false,
+        };
+    }
+
+    if resource_type == "skill" && REVIEW_ONLY_SKILL_PROPOSAL_TYPES.contains(&proposal_type) {
+        return TrustPolicyDecision {
+            risk_level: RiskLevel::Medium,
+            reasons: vec![
+                "skill analysis proposals are review-only and cannot auto apply".to_string(),
+            ],
             can_auto_apply: false,
         };
     }
@@ -847,6 +866,31 @@ fn parse_list(value: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn skill_analysis_proposals_are_review_only() {
+        let settings = TrustPolicySettings::default();
+        let changes = json!({
+            "reason": "高使用但缺少示例，建议人工确认后补充。",
+            "health_score": 62,
+            "usage_30d": 8
+        });
+
+        let decision = assess_proposal_risk(
+            "skill",
+            "skill_example_improvement",
+            &changes,
+            true,
+            &settings,
+        );
+
+        assert_eq!(decision.risk_level, RiskLevel::Medium);
+        assert!(!decision.can_auto_apply);
+        assert!(decision
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("review-only")));
+    }
 
     #[tokio::test]
     async fn low_risk_auto_apply_can_be_rolled_back() {

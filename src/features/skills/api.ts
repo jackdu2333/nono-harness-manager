@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Skill, SkillSource } from './types';
+import { Skill, SkillAnalysisFilters, SkillAnalysisOverview, SkillSource } from './types';
 
 export async function listSkillSources(): Promise<SkillSource[]> {
   return invoke('list_skill_sources');
@@ -102,4 +102,32 @@ export async function markDuplicate(skillId: string, groupId: string | null): Pr
  */
 export async function recordSkillUsage(skillId: string, action: string): Promise<void> {
   return invoke('record_skill_usage', { skillId, action });
+}
+
+export async function getSkillAnalysisOverview(
+  filters?: SkillAnalysisFilters,
+): Promise<SkillAnalysisOverview> {
+  return invoke('get_skill_analysis_overview', { filters: filters ?? null });
+}
+
+export async function createSkillAnalysisProposal(
+  skillId: string,
+  proposalType:
+    | 'skill_metadata_improvement'
+    | 'skill_example_improvement'
+    | 'skill_boundary_improvement'
+    | 'skill_archive_recommendation'
+    | 'skill_merge_recommendation'
+    | 'skill_agent_binding_recommendation',
+  proposedChanges: Record<string, unknown>,
+): Promise<unknown> {
+  return invoke('create_intelligence_proposal', {
+    resourceType: 'skill',
+    resourceId: skillId,
+    proposalType,
+    proposedChanges: JSON.stringify(proposedChanges),
+    evidenceFiles: null,
+    confidence: 'medium',
+    createdBy: 'skills-analysis',
+  });
 }

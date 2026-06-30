@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   RefreshCw, 
@@ -10,6 +11,7 @@ import {
   ListOrdered 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SkillAnalysisDashboard } from '@/features/skills/components/SkillAnalysisDashboard';
 import { getAnalyticsOverview, triggerAgentLogScan } from '@/features/local-assets/api';
 import type { AnalyticsOverview, UsageMetric, MatrixCell, ScanStatus } from '@/features/local-assets/types';
 
@@ -185,6 +187,8 @@ function MatrixTable({
 }
 
 export default function AnalyticsPage() {
+  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<'logs' | 'skills'>('logs');
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -268,6 +272,28 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
+
+      <div className="inline-flex rounded-md border border-border overflow-hidden">
+        <button
+          onClick={() => setActiveView('logs')}
+          className={`px-3 py-1.5 text-sm transition-colors ${activeView === 'logs' ? 'bg-foreground text-background' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+        >
+          日志总览
+        </button>
+        <button
+          onClick={() => setActiveView('skills')}
+          className={`px-3 py-1.5 text-sm transition-colors ${activeView === 'skills' ? 'bg-foreground text-background' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+        >
+          Skill 资产分析
+        </button>
+      </div>
+
+      {activeView === 'skills' ? (
+        <div className="-mx-6">
+          <SkillAnalysisDashboard onSelectSkill={() => navigate('/skills')} />
+        </div>
+      ) : (
+        <>
 
       {/* 资源统计卡片 */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -386,6 +412,8 @@ export default function AnalyticsPage() {
           )}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }
