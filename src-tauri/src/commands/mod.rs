@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod ai;
 pub mod app_settings;
 pub mod harness_api;
 pub mod local_assets;

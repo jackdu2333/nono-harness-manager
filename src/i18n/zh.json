@@ -55,5 +55,42 @@
     "remove": "移除记录",
     "remove_confirm": "您确定要移除这个 MCP 服务器记录吗？",
     "remove_hint": "移除记录仅从数据库中删除，不会影响您的本地文件。"
+  },
+  "workbench": {
+    "title": "AI 工作台",
+    "subtitle": "让 Harness 分析本机 AI 资产状态，并给出下一步治理建议。",
+    "today_suggestions": "今日建议",
+    "no_suggestions": "暂无需要处理的建议",
+    "all_good": "所有资源状态良好",
+    "more_suggestions": "还有 {{count}} 条建议未显示",
+    "quick_tasks": {
+      "analyze_skills": "分析 Skills",
+      "check_agents": "检查 Agents",
+      "check_mcp": "检查 MCP",
+      "daily_plan": "今日治理计划",
+      "review_proposals": "待处理 Proposals"
+    },
+    "work_queue": "待处理队列",
+    "queue_empty": "队列已清空",
+    "process": "处理",
+    "ai_analyze": "AI 分析",
+    "ai_analyze_soon": "Phase 2 可用",
+    "report": {
+      "summary": "概述",
+      "findings": "发现",
+      "suggested_actions": "建议动作",
+      "related_resources": "关联资源",
+      "next_steps": "下一步"
+    },
+    "report_titles": {
+      "analyze_skills": "Skills 分析报告",
+      "check_agents": "Agents 检查报告",
+      "check_mcp": "MCP 检查报告",
+      "review_proposals": "Proposals 分析报告",
+      "daily_governance_plan": "今日治理计划"
+    },
+    "ai_placeholder_title": "AI 助手即将启用",
+    "ai_placeholder_desc": "当前基于本地规则引擎分析。后续将支持 LLM 驱动的智能治理建议。",
+    "refresh": "刷新"
   }
 }

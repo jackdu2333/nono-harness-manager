@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/', navKey: 'dashboard' },
+      { icon: LayoutDashboard, label: 'AI 工作台', path: '/', navKey: 'dashboard' },
       { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Beta' },
       { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Beta' },
     ],

@@ -91,6 +91,19 @@ fn main() {
             commands::local_assets::open_local_path,
             commands::app_settings::get_setting,
             commands::app_settings::set_setting,
+            // AI Provider Settings (Phase 2)
+            commands::ai::get_ai_settings,
+            commands::ai::set_ai_settings,
+            commands::ai::clear_ai_api_key,
+            commands::ai::test_ai_provider_connection,
+            // AI Tasks (Phase 3)
+            commands::ai::create_ai_task,
+            commands::ai::list_ai_tasks,
+            // AI Chat (Phase 5)
+            commands::ai::create_chat_session,
+            commands::ai::list_chat_sessions,
+            commands::ai::get_chat_messages,
+            commands::ai::send_chat_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

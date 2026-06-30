@@ -33,5 +33,42 @@
   },
   "common": {
     "unknown": "Unknown"
+  },
+  "workbench": {
+    "title": "AI Workbench",
+    "subtitle": "Let Harness analyze your local AI asset status and suggest next governance actions.",
+    "today_suggestions": "Today's Suggestions",
+    "no_suggestions": "No suggestions to address",
+    "all_good": "All resources are in good shape",
+    "more_suggestions": "{{count}} more suggestions not shown",
+    "quick_tasks": {
+      "analyze_skills": "Analyze Skills",
+      "check_agents": "Check Agents",
+      "check_mcp": "Check MCP",
+      "daily_plan": "Daily Governance Plan",
+      "review_proposals": "Pending Proposals"
+    },
+    "work_queue": "Work Queue",
+    "queue_empty": "Queue is empty",
+    "process": "Process",
+    "ai_analyze": "AI Analyze",
+    "ai_analyze_soon": "Available in Phase 2",
+    "report": {
+      "summary": "Summary",
+      "findings": "Findings",
+      "suggested_actions": "Suggested Actions",
+      "related_resources": "Related Resources",
+      "next_steps": "Next Steps"
+    },
+    "report_titles": {
+      "analyze_skills": "Skills Analysis Report",
+      "check_agents": "Agents Check Report",
+      "check_mcp": "MCP Check Report",
+      "review_proposals": "Proposals Analysis Report",
+      "daily_governance_plan": "Daily Governance Plan"
+    },
+    "ai_placeholder_title": "AI Assistant Coming Soon",
+    "ai_placeholder_desc": "Currently powered by local rule engine. LLM-driven intelligent governance suggestions coming soon.",
+    "refresh": "Refresh"
   }
 }
