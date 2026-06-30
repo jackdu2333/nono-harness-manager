@@ -39,6 +39,9 @@ const AGENT_PROPOSAL_TYPES: &[&str] = &[
     "improve_agent_detection_rule",
     "explain_agent_launch_strategy",
 ];
+
+// TODO: Migrate harness_cli list/context/propose to reuse ai::safe_tools so
+// MCP Server, CLI, and Built-in AI share one safe context and redaction layer.
 #[tokio::main]
 async fn main() {
     if let Err(err) = run().await {

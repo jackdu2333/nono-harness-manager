@@ -1,5 +1,5 @@
 use crate::ai::llm_client::{LlmClient, LlmMessage};
-use crate::ai::safe_tools::{call_tool, sanitize_output, ToolContext};
+use crate::ai::safe_tools::{call_tool, redact_sensitive_fields, sanitize_output, ToolContext};
 use crate::ai::tool_registry;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,10 @@ fn generate_summary(val: &Value) -> String {
     }
 }
 
+fn redact_tool_arguments(arguments: Value) -> Value {
+    redact_sensitive_fields(arguments)
+}
+
 pub async fn run_tool_loop(
     client: LlmClient,
     mut messages: Vec<LlmMessage>,
@@ -129,7 +133,7 @@ pub async fn run_tool_loop(
                     (false, err_output, Some(err_msg), Value::Null)
                 }
                 Ok(args) => {
-                    let args_clone = args.clone();
+                    let redacted_args = redact_tool_arguments(args.clone());
                     // Run the tool with timeout
                     let tool_future = call_tool(name, args, tool_ctx);
                     let res = match tokio::time::timeout(
@@ -155,7 +159,7 @@ pub async fn run_tool_loop(
                         }
                         Ok(Ok(output)) => (true, output, None),
                     };
-                    (res.0, res.1, res.2, args_clone)
+                    (res.0, res.1, res.2, redacted_args)
                 }
             };
 
@@ -266,5 +270,29 @@ mod tests {
         let summary = generate_summary(&value);
         assert!(summary.starts_with("String: 中文内容"));
         assert!(summary.ends_with("..."));
+    }
+
+    #[test]
+    fn redact_tool_arguments_removes_sensitive_values() {
+        let args = json!({
+            "resource_type": "skill",
+            "api_key": "sk-test",
+            "nested": {
+                "token": "secret-token",
+                "env": {
+                    "PASSWORD": "secret-password"
+                }
+            }
+        });
+
+        let redacted = redact_tool_arguments(args);
+        let serialized = serde_json::to_string(&redacted).unwrap();
+
+        assert_eq!(redacted["api_key"], "***");
+        assert_eq!(redacted["nested"]["token"], "***");
+        assert_eq!(redacted["nested"]["env"], "***");
+        assert!(!serialized.contains("sk-test"));
+        assert!(!serialized.contains("secret-token"));
+        assert!(!serialized.contains("secret-password"));
     }
 }

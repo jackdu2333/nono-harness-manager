@@ -414,6 +414,12 @@ pub struct SendChatInput {
     pub content: String,
 }
 
+fn build_chat_action_input(content: &str) -> serde_json::Value {
+    serde_json::json!({
+        "user_message_length": content.chars().count()
+    })
+}
+
 /// Create a new chat session
 #[command]
 pub async fn create_chat_session(pool: State<'_, SqlitePool>) -> Result<ChatSession, String> {
@@ -677,7 +683,7 @@ pub async fn send_chat_message(
     )
     .bind(&log_id)
     .bind(&session_id)
-    .bind(&serde_json::json!({"user_message": input.content}).to_string())
+    .bind(&build_chat_action_input(&input.content).to_string())
     .bind(&serde_json::json!({"response_length": final_content.len()}).to_string())
     .bind(&Utc::now().to_rfc3339())
     .execute(&*pool)
@@ -727,4 +733,19 @@ pub async fn send_chat_message(
         ],
         tool_calls_summary,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_chat_action_input_logs_length_without_full_message() {
+        let input = build_chat_action_input("secret password token");
+        let serialized = input.to_string();
+
+        assert_eq!(input["user_message_length"], 21);
+        assert!(!serialized.contains("secret password token"));
+        assert!(input.get("user_message").is_none());
+    }
 }
