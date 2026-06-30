@@ -50,7 +50,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if atype == "App" && app_path.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "error", "Agent", "path",
+                    "error",
+                    "Agent",
+                    "path",
                     "Agent App 路径为空",
                     "该 Agent 标记为 App 类型，但 app_path 缺失。",
                     "重新扫描 Applications，或手动更新 Agent App 路径。",
@@ -66,7 +68,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if !ap.is_empty() && !Path::new(ap).exists() {
                     issues.push(
                         HealthIssue::new(
-                            "error", "Agent", "path",
+                            "error",
+                            "Agent",
+                            "path",
                             "Agent App 路径不存在",
                             format!("app_path 指向的路径不存在: {ap}"),
                             "确认应用是否已卸载或移动，重新扫描或更新路径。",
@@ -84,7 +88,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if Path::new(ap).exists() && !ap.ends_with(".app") {
                     issues.push(
                         HealthIssue::new(
-                            "warning", "Agent", "path",
+                            "warning",
+                            "Agent",
+                            "path",
                             "Agent App 路径不是 .app",
                             format!("app_path 存在但不是标准 macOS .app 包: {ap}"),
                             "确认路径是否指向正确的应用包。",
@@ -100,7 +106,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if atype == "CLI" && cli_path.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "warning", "Agent", "path",
+                    "warning",
+                    "Agent",
+                    "path",
                     "Agent CLI 路径为空",
                     "该 Agent 标记为 CLI 类型，但 cli_path 缺失。",
                     "确认 CLI 二进制路径，补充 cli_path 字段。",
@@ -116,7 +124,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if !cp.is_empty() && !Path::new(cp).exists() {
                     issues.push(
                         HealthIssue::new(
-                            "error", "Agent", "path",
+                            "error",
+                            "Agent",
+                            "path",
                             "Agent CLI 路径不存在",
                             format!("cli_path 指向的路径不存在: {cp}"),
                             "确认 CLI 工具是否已安装或路径已变更。",
@@ -135,7 +145,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if p.exists() && !is_executable(p) {
                     issues.push(
                         HealthIssue::new(
-                            "warning", "Agent", "path",
+                            "warning",
+                            "Agent",
+                            "path",
                             "Agent CLI 不可执行",
                             format!("cli_path 存在但没有执行权限: {cp}"),
                             "通过 chmod +x 或重新安装 CLI 工具修复。",
@@ -152,7 +164,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
             if !cp.is_empty() && !Path::new(cp).exists() {
                 issues.push(
                     HealthIssue::new(
-                        "warning", "Agent", "path",
+                        "warning",
+                        "Agent",
+                        "path",
                         "Agent 配置目录不可访问",
                         format!("config_path 不存在: {cp}"),
                         "重新扫描 Agent 配置目录，或移除失效索引。",
@@ -168,7 +182,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
             if !lp.is_empty() && !Path::new(lp).exists() {
                 issues.push(
                     HealthIssue::new(
-                        "warning", "Agent", "path",
+                        "warning",
+                        "Agent",
+                        "path",
                         "Agent 日志路径不存在",
                         format!("log_path 不存在: {lp}"),
                         "确认日志目录是否已变更，或清理失效引用。",
@@ -185,9 +201,14 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if matches!(status.as_deref(), Some("broken") | Some("error")) {
             issues.push(
                 HealthIssue::new(
-                    "error", "Agent", "status",
+                    "error",
+                    "Agent",
+                    "status",
                     "Agent 状态异常",
-                    format!("Agent status = {}，需要诊断。", status.as_deref().unwrap_or("?")),
+                    format!(
+                        "Agent status = {}，需要诊断。",
+                        status.as_deref().unwrap_or("?")
+                    ),
                     "检查 Agent 路径、配置和依赖，修复后重新扫描确认。",
                 )
                 .with_resource(Some(name.clone()), app_path.clone())
@@ -205,9 +226,14 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if supports_log && log_path.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "info", "Agent", "metadata",
+                    "info",
+                    "Agent",
+                    "metadata",
                     "Agent 支持日志但缺少 log_path",
-                    format!("{} 已知支持日志适配，但 log_path 为空。", agent_key.as_deref().unwrap_or("?")),
+                    format!(
+                        "{} 已知支持日志适配，但 log_path 为空。",
+                        agent_key.as_deref().unwrap_or("?")
+                    ),
                     "补充 log_path 以启用使用统计和分析功能。",
                 )
                 .with_resource(Some(name.clone()), None)
@@ -221,7 +247,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if confidence.as_deref() == Some("candidate") && is_user_confirmed == 0 {
             issues.push(
                 HealthIssue::new(
-                    "warning", "Agent", "status",
+                    "warning",
+                    "Agent",
+                    "status",
                     "Agent 待确认 (candidate)",
                     "该 Agent 识别置信度为 candidate，尚未经用户确认。",
                     "在 Agents 页面确认或忽略该 Agent。",
@@ -232,7 +260,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         } else if confidence.as_deref() == Some("probable") && is_user_confirmed == 0 {
             issues.push(
                 HealthIssue::new(
-                    "info", "Agent", "status",
+                    "info",
+                    "Agent",
+                    "status",
                     "Agent 待确认 (probable)",
                     "该 Agent 识别置信度为 probable，尚未经用户确认。",
                     "在 Agents 页面确认或忽略该 Agent。",
@@ -248,7 +278,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if atype == "App" && bundle_id.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "info", "Agent", "metadata",
+                    "info",
+                    "Agent",
+                    "metadata",
                     "Agent 缺少 bundle_id",
                     "App 类型 Agent 未记录 bundle_id，可能影响精确识别。",
                     "通过重新扫描补充 bundle_id。",
@@ -265,7 +297,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if age.num_days() > 30 {
                     issues.push(
                         HealthIssue::new(
-                            "info", "Agent", "metadata",
+                            "info",
+                            "Agent",
+                            "metadata",
                             "Agent 检测时间过旧",
                             format!("last_detected_at 距今已超过 30 天 ({}天)。", age.num_days()),
                             "重新执行 Agent 扫描以刷新检测状态。",

@@ -244,7 +244,7 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps) {
             <TagBtn active={skill.needs_review === 1} onClick={handleToggleReview} activeClass="bg-primary text-primary-foreground">
               {t('skills.tag_organize')}
             </TagBtn>
-            <TagBtn active={skill.needs_improvement === 1} onClick={handleToggleImproveTag} activeClass="bg-purple-500 text-white">
+            <TagBtn active={skill.needs_improvement === 1} onClick={handleToggleImproveTag} activeClass="bg-purple-500 text-primary-foreground">
               {t('skills.tag_evolve')}
             </TagBtn>
             <TagBtn active={skill.is_archived === 1} onClick={handleArchive} activeClass="bg-muted-foreground text-foreground">

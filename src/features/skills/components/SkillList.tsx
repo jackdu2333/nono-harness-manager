@@ -65,7 +65,7 @@ export function SkillList({
               )}
               {skill.duplicate_group_id && (
                 <span
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-info/10 text-info"
                   title={t('skills.dup_tag_persisted')}
                 >
                   {t('skills.dup_tagged')}

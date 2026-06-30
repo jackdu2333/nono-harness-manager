@@ -8,9 +8,9 @@ export function MCPOverviewTab({ server }: { server: McpServer }) {
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-sm font-semibold text-foreground mb-2">{t('mcp.description', 'Description')}</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-2">{t('mcp.description')}</h3>
         <p className="text-sm text-foreground/80 leading-relaxed bg-secondary/30 p-4 rounded-lg border border-border/50">
-          {server.description || '暂无描述'}
+          {server.description || t('mcp.no_description_short')}
         </p>
       </section>
 
@@ -26,14 +26,14 @@ export function MCPOverviewTab({ server }: { server: McpServer }) {
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-foreground mb-3">{t('mcp.capabilities', 'Capabilities')}</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">{t('mcp.capabilities')}</h3>
         <div className="p-4 bg-secondary/20 rounded-lg border border-dashed border-border/50 text-sm text-muted-foreground">
-          Tools、Resources 和 Prompts 尚未解析；当前仅展示 MCP Server 配置台账。
+            {t('mcp.overview_note')}
         </div>
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-foreground mb-3">{t('mcp.launch_command', 'Launch Command')}</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">{t('mcp.launch_command')}</h3>
         <div className="p-3 bg-secondary/50 rounded-lg border border-border text-sm font-mono text-foreground flex items-center gap-2 overflow-x-auto">
           <Play className="w-4 h-4 text-primary shrink-0" />
           <span className="whitespace-nowrap">{server.command} {server.args ? '...' : ''}</span>

@@ -55,7 +55,9 @@ async fn check_table(
         if path.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "warning", label, "path",
+                    "warning",
+                    label,
+                    "path",
                     format!("{label} 路径为空"),
                     format!("{label} '{name}' 没有 path。"),
                     "补充 path 字段。",
@@ -73,7 +75,9 @@ async fn check_table(
         if !dir.exists() {
             issues.push(
                 HealthIssue::new(
-                    "error", label, "path",
+                    "error",
+                    label,
+                    "path",
                     format!("{label} 路径不存在"),
                     format!("路径不存在: {p}"),
                     "确认路径是否已移动；如已废弃则更新或移除索引。",
@@ -88,7 +92,9 @@ async fn check_table(
         if !dir.is_dir() {
             issues.push(
                 HealthIssue::new(
-                    "warning", label, "path",
+                    "warning",
+                    label,
+                    "path",
                     format!("{label} 路径不是目录"),
                     format!("path 指向的不是目录: {p}"),
                     "确认是否应指向文件而非目录。",
@@ -104,7 +110,9 @@ async fn check_table(
             if entries.next().is_none() {
                 issues.push(
                     HealthIssue::new(
-                        "warning", label, "path",
+                        "warning",
+                        label,
+                        "path",
                         format!("{label} 目录为空"),
                         format!("路径存在但目录内没有文件: {p}"),
                         "确认资源是否已迁移，或补充内容。",

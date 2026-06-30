@@ -12,6 +12,7 @@
     "remove": "Remove",
     "open": "Open",
     "copy_path": "Copy Path",
+    "copy_ref": "Copy Ref",
     "search": "Search",
     "filter": "Filter",
     "clear": "Clear",
@@ -394,6 +395,9 @@
     "remove_hint": "This only removes the record from the database, not your local files.",
     "remove_server": "Remove Server",
     "capability_unparsed": "Capabilities not parsed",
+    "no_selection": "No Server Selected",
+    "capabilities": "Capabilities",
+    "launch_command": "Launch Command",
     "scan_title": "Scan MCP Directory",
     "scan_desc": "Enter a local directory path. We'll scan for package.json or mcp.json configs to discover new MCP servers.",
     "scan_example": "e.g. ~/.gemini/ or /Users/user/projects",
@@ -534,7 +538,9 @@
     "no_dirs": "No knowledge bases added.",
     "doc_list": "Document List",
     "select_hint": "Select a knowledge base to view documents",
-    "select_hint_desc": "Select a knowledge base to view documents."
+    "select_hint_desc": "Select a knowledge base to view documents.",
+    "doc_unit": "docs",
+    "summary": "{{count}} docs · {{size}} · Last modified: {{time}}"
   },
   "projects": {
     "description": "Organize Agents, Skills, MCP, Memory, and Knowledge by project.",

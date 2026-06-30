@@ -33,7 +33,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if status.as_deref() == Some("error") {
             issues.push(
                 HealthIssue::new(
-                    "error", "MCP", "status",
+                    "error",
+                    "MCP",
+                    "status",
                     "MCP Server 状态异常",
                     "该 MCP Server 已被标记为 error。",
                     "检查配置文件、command、args 和环境变量。",
@@ -47,7 +49,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if command.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "warning", "MCP", "path",
+                    "warning",
+                    "MCP",
+                    "path",
                     "MCP Server 缺少启动命令",
                     "该 MCP 记录没有 command。",
                     "重新扫描来源配置，或补充 command 字段。",
@@ -64,7 +68,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if !Path::new(binary).exists() {
                     issues.push(
                         HealthIssue::new(
-                            "error", "MCP", "path",
+                            "error",
+                            "MCP",
+                            "path",
                             "MCP command 绝对路径不存在",
                             format!("command 指向的路径不存在: {binary}"),
                             "确认二进制路径或更新 command。",
@@ -84,7 +90,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if !command_in_path(binary) {
                     issues.push(
                         HealthIssue::new(
-                            "warning", "MCP", "path",
+                            "warning",
+                            "MCP",
+                            "path",
                             "MCP command 在 PATH 中找不到",
                             format!("command '{binary}' 在当前 PATH 中未找到。"),
                             "确认依赖是否已安装，或使用绝对路径。",
@@ -102,7 +110,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
             if !sp.is_empty() && !Path::new(sp).exists() {
                 issues.push(
                     HealthIssue::new(
-                        "warning", "MCP", "path",
+                        "warning",
+                        "MCP",
+                        "path",
                         "MCP source_path 不存在",
                         format!("source_path 不存在: {sp}"),
                         "确认配置文件是否已移动。",
@@ -117,7 +127,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if description.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "warning", "MCP", "metadata",
+                    "warning",
+                    "MCP",
+                    "metadata",
                     "MCP 缺少 description",
                     "该 MCP Server 没有 description。",
                     "补充描述以改善检索和理解。",
@@ -131,7 +143,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if category.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "info", "MCP", "metadata",
+                    "info",
+                    "MCP",
+                    "metadata",
                     "MCP 缺少 category",
                     "该 MCP Server 没有分类信息。",
                     "设置 category 字段。",
@@ -145,7 +159,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if tags.as_deref().is_none_or(str::is_empty) {
             issues.push(
                 HealthIssue::new(
-                    "info", "MCP", "metadata",
+                    "info",
+                    "MCP",
+                    "metadata",
                     "MCP 缺少 tags",
                     "该 MCP Server 没有标签。",
                     "补充标签以改善筛选。",

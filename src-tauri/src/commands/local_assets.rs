@@ -226,7 +226,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
 
     if sources.is_empty() {
         issues.push(HealthIssue::new(
-            "warning", "Memory", "path",
+            "warning",
+            "Memory",
+            "path",
             "尚未添加记忆目录",
             "Memory 页面还没有可体检的本地记忆根目录。",
             "添加 memorydu 或其他记忆根目录后再运行体检。",
@@ -241,7 +243,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
         if !root.exists() {
             issues.push(
                 HealthIssue::new(
-                    "critical", "Memory", "path",
+                    "critical",
+                    "Memory",
+                    "path",
                     "记忆目录不存在",
                     format!("记忆目录路径不存在: {path}"),
                     "确认路径是否已移动；如已废弃则更新索引。",
@@ -253,7 +257,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
         if source.file_count == 0 {
             issues.push(
                 HealthIssue::new(
-                    "warning", "Memory", "path",
+                    "warning",
+                    "Memory",
+                    "path",
                     "记忆目录为空或无可识别文件",
                     "扫描没有发现 Markdown、JSON、YAML、文本等记忆文件。",
                     "确认路径是否指向真实记忆根目录，或调整目录结构。",
@@ -264,7 +270,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
         if source.asset_type.is_none() {
             issues.push(
                 HealthIssue::new(
-                    "info", "Memory", "metadata",
+                    "info",
+                    "Memory",
+                    "metadata",
                     "记忆目录未标记类型",
                     "该目录可以扫描，但缺少长期记忆、项目记忆、临时记忆等类型标记。",
                     "为记忆目录补充 memory_type。",
@@ -279,7 +287,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
             if file.size_bytes as u64 > LARGE_MEMORY_FILE_BYTES {
                 issues.push(
                     HealthIssue::new(
-                        "warning", "Memory", "metadata",
+                        "warning",
+                        "Memory",
+                        "metadata",
                         "记忆文件偏大",
                         "单个记忆文件超过 1MB，后续给 AI 提供上下文时可能需要摘录或拆分。",
                         "保留原文不变，另行创建摘要层或拆分结构化记忆。",
@@ -293,7 +303,9 @@ pub async fn run_memory_health_check(pool: State<'_, SqlitePool>) -> Result<Heal
             if count > 1 {
                 issues.push(
                     HealthIssue::new(
-                        "info", "Memory", "metadata",
+                        "info",
+                        "Memory",
+                        "metadata",
                         "发现同名记忆文件",
                         format!("同名文件出现 {count} 次，可能需要人工确认是否重复。"),
                         "在 Memory 页面定位同名文件，人工判断是否需要合并或改名。",
@@ -1226,4 +1238,3 @@ fn name_query(resource_type: &str) -> Result<&'static str, String> {
 
 // 以下旧 health check 函数已迁移到 crate::health::checks，
 // 此处不再保留。相关逻辑由 health/engine.rs 统一调度。
-

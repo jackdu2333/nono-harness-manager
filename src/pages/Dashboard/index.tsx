@@ -54,7 +54,7 @@ interface DashboardState {
 const actionLabels: Record<string, string> = {
   view_detail: 'common.view',
   copy_path: 'common.copy_path',
-  copy_ref: 'Copy Ref',
+  copy_ref: 'common.copy_ref',
   open_dir: 'common.open',
   edit_description: 'common.edit',
   set_category: 'common.category',
@@ -403,7 +403,7 @@ export default function DashboardPage() {
                             <span className="text-[10px] text-muted-foreground/50">{formatTime(task.created_at, t)}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] px-1 bg-green-500/10 text-green-700 dark:text-green-400 rounded font-bold uppercase">
+                            <span className="text-[9px] px-1 bg-success/10 text-success rounded font-bold uppercase">
                               {t('dashboard.completed')}
                             </span>
                             {task.result_json && (

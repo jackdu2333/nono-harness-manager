@@ -12,6 +12,7 @@
     "remove": "移除",
     "open": "打开",
     "copy_path": "复制路径",
+    "copy_ref": "复制引用",
     "search": "搜索",
     "filter": "筛选",
     "clear": "清除",
@@ -394,6 +395,9 @@
     "remove_hint": "移除记录仅从数据库中删除，不会影响您的本地文件。",
     "remove_server": "移除服务器",
     "capability_unparsed": "能力未解析",
+    "no_selection": "未选择 MCP 服务器",
+    "capabilities": "能力",
+    "launch_command": "启动命令",
     "scan_title": "扫描 MCP 目录",
     "scan_desc": "输入本地目录路径，我们将扫描该目录下的 package.json 或 mcp.json 配置来发现新的 MCP Server。",
     "scan_example": "例如: ~/.gemini/ 或 /Users/user/projects",
@@ -534,7 +538,9 @@
     "no_dirs": "尚未添加知识库。",
     "doc_list": "文档列表",
     "select_hint": "选择知识库查看文档",
-    "select_hint_desc": "选择一个知识库查看文档。"
+    "select_hint_desc": "选择一个知识库查看文档。",
+    "doc_unit": "篇",
+    "summary": "共 {{count}} 篇 · {{size}} · 最近修改：{{time}}"
   },
   "projects": {
     "description": "按项目组织 Agent、Skills、MCP、Memory 与 Knowledge。",

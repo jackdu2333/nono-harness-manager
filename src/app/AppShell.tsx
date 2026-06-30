@@ -44,9 +44,9 @@ interface NavGroup {
 }
 
 const badgeClass: Record<NavStatus, string> = {
-  Beta: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  Beta: 'bg-info/10 text-info',
   Soon: 'bg-muted text-muted-foreground/60',
-  Ready: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  Ready: 'bg-success/10 text-success',
   Disabled: 'bg-destructive/10 text-destructive',
 };
 

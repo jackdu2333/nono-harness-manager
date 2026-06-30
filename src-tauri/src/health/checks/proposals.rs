@@ -36,9 +36,14 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if age.num_days() > 7 {
                     issues.push(
                         HealthIssue::new(
-                            "warning", "Proposal", "proposal",
+                            "warning",
+                            "Proposal",
+                            "proposal",
                             "Proposal 待处理超时",
-                            format!("proposal {id} 处于 {status} 已超过 7 天 ({}天)。", age.num_days()),
+                            format!(
+                                "proposal {id} 处于 {status} 已超过 7 天 ({}天)。",
+                                age.num_days()
+                            ),
                             "尽快审核该 proposal，应用或拒绝。",
                         )
                         .with_resource(Some(format!("proposal:{id}")), None)
@@ -56,9 +61,14 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
                 if age.num_days() > 7 {
                     issues.push(
                         HealthIssue::new(
-                            "warning", "Proposal", "proposal",
+                            "warning",
+                            "Proposal",
+                            "proposal",
                             "Proposal 人工审核超时",
-                            format!("proposal {id} 待人工审核已超过 7 天 ({}天)。", age.num_days()),
+                            format!(
+                                "proposal {id} 待人工审核已超过 7 天 ({}天)。",
+                                age.num_days()
+                            ),
                             "尽快完成人工审核。",
                         )
                         .with_resource(Some(format!("proposal:{id}")), None)
@@ -72,7 +82,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if status == "blocked" && acknowledged_at.is_none() {
             issues.push(
                 HealthIssue::new(
-                    "info", "Proposal", "proposal",
+                    "info",
+                    "Proposal",
+                    "proposal",
                     "Proposal 被拦截但未确认",
                     format!("proposal {id} 被 Trust Policy 拦截，但用户尚未确认。"),
                     "查看拦截原因，确认后标记 acknowledged。",
@@ -88,14 +100,18 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if !resource_exists {
             issues.push(
                 HealthIssue::new(
-                    "error", "Proposal", "index",
+                    "error",
+                    "Proposal",
+                    "index",
                     "Proposal 引用不存在的资源",
                     format!("proposal {id} → {resource_type}:{resource_id} 不存在"),
                     "删除该 proposal 或修正资源引用。",
                 )
                 .with_resource(Some(format!("proposal:{id}")), None)
                 .with_resource_id("Proposal", &id)
-                .with_evidence(&format!("resource_type={resource_type}, resource_id={resource_id}")),
+                .with_evidence(&format!(
+                    "resource_type={resource_type}, resource_id={resource_id}"
+                )),
             );
         }
 
@@ -103,7 +119,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         if status == "failed" || status == "rollback_failed" {
             issues.push(
                 HealthIssue::new(
-                    "error", "Proposal", "proposal",
+                    "error",
+                    "Proposal",
+                    "proposal",
                     "Proposal 执行失败",
                     format!("proposal {id} 状态为 {status}。"),
                     "检查日志，修复问题后重试或清除。",

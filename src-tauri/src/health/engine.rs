@@ -118,10 +118,7 @@ fn build_report(
             generated_at: Utc::now().to_rfc3339(),
             summary: Some(CheckSummary {
                 checked_resources: 0,
-                checked_categories: checked_categories
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
+                checked_categories: checked_categories.iter().map(|s| s.to_string()).collect(),
                 issue_counts,
                 score_explanation: vec![
                     "base: 80 (empty system)".to_string(),
@@ -257,13 +254,262 @@ fn build_report(
         generated_at: Utc::now().to_rfc3339(),
         summary: Some(CheckSummary {
             checked_resources,
-            checked_categories: checked_categories
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
+            checked_categories: checked_categories.iter().map(|s| s.to_string()).collect(),
             issue_counts: global_issue_counts,
             score_explanation,
             module_scores,
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 辅助：构造一条 HealthIssue
+    fn issue(severity: &str, source: &str) -> HealthIssue {
+        HealthIssue::new(
+            severity,
+            source,
+            "test",
+            format!("{severity} issue from {source}"),
+            "test description",
+            "test suggestion",
+        )
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 1：空资源场景 — score=80, status=not_ready
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_empty_resources_score_80() {
+        let report = build_report(vec![], 0, vec!["skills", "agents"]);
+        assert_eq!(report.score, 80);
+        assert_eq!(report.status.as_deref(), Some("not_ready"));
+        assert!(report.summary.is_some());
+        let s = report.summary.unwrap();
+        assert_eq!(s.checked_resources, 0);
+        assert!(s.module_scores.is_empty());
+        assert_eq!(report.issues.len(), 1); // warning about empty
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 2：健康完整场景 — 无 issue，score=100, status=healthy
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_healthy_data() {
+        let report = build_report(vec![], 10, vec!["skills", "agents", "mcp"]);
+        assert_eq!(report.score, 100);
+        assert_eq!(report.status.as_deref(), Some("healthy"));
+        let s = report.summary.unwrap();
+        assert_eq!(s.module_scores.len(), 6); // 6 scored modules
+        for ms in &s.module_scores {
+            assert_eq!(
+                ms.score, ms.weight,
+                "module {} should be full score",
+                ms.module
+            );
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 3：多条 info 不会拉低总分过多（cap at 3.0 per module）
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_many_info_capped() {
+        let issues: Vec<HealthIssue> = (0..20).map(|_| issue("info", "Skill")).collect();
+        let report = build_report(issues, 10, vec!["skills"]);
+        // info penalty in skills = min(20*1.0, 3.0) = 3.0; skills(25)-3=22
+        // total = 22+20+20+15+10+10 = 97; Floor: no critical/error -> max(75). 97>75.
+        assert!(
+            report.score >= 90,
+            "20 info issues should not tank score, got {}",
+            report.score
+        );
+        assert_eq!(report.status.as_deref(), Some("healthy"));
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 4：多条 warning 有 cap（weight * 0.5）
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_many_warning_capped() {
+        let issues: Vec<HealthIssue> = (0..30).map(|_| issue("warning", "Agent")).collect();
+        let report = build_report(issues, 10, vec!["agents"]);
+        // agents weight=20, warning_penalty=min(60,10)=10; agents=20-10=10
+        // total=10+25+20+15+10+10=90; Floor: no critical/error -> max(75). 90>75.
+        assert!(
+            report.score >= 85,
+            "30 warnings should be capped, got {}",
+            report.score
+        );
+        assert!(
+            report.score <= 90,
+            "score should not exceed 90 with capped warnings, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 5：critical 明显影响分数
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_critical_drops_score() {
+        let issues = vec![issue("critical", "Agent"), issue("critical", "Skill")];
+        let report = build_report(issues, 10, vec!["skills", "agents"]);
+        // agents(20): -8=12, skills(25): -8=17, others=55, total=84, cap 79
+        assert!(
+            report.score <= 79,
+            "2 critical should cap at 79, got {}",
+            report.score
+        );
+        assert!(
+            report.score < 85,
+            "2 critical should be below raw 85, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 6：3+ critical 封顶 59
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_three_critical_cap_59() {
+        let issues = vec![
+            issue("critical", "Agent"),
+            issue("critical", "Skill"),
+            issue("critical", "MCP"),
+        ];
+        let report = build_report(issues, 10, vec!["skills", "agents", "mcp"]);
+        assert!(
+            report.score <= 59,
+            "3+ critical should cap at 59, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 7：error 影响分数但有保底 60
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_error_with_floor_60() {
+        let issues = vec![issue("error", "Agent"), issue("error", "Skill")];
+        let report = build_report(issues, 10, vec!["skills", "agents"]);
+        // agents(20): -5=15, skills(25): -5=20, others=55, total=90
+        // No critical -> floor 60. 90 > 60 so stays at 90.
+        assert!(
+            report.score >= 60,
+            "no critical should floor at 60, got {}",
+            report.score
+        );
+        assert!(
+            report.score <= 90,
+            "2 errors with 90 raw should stay at 90, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 8：混合 severity — 现实场景
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_mixed_severity_realistic() {
+        let issues = vec![
+            issue("warning", "Skill"),
+            issue("warning", "Skill"),
+            issue("info", "Skill"),
+            issue("info", "Skill"),
+            issue("warning", "Agent"),
+            issue("warning", "MCP"),
+            issue("info", "MCP"),
+            issue("warning", "Proposal"),
+        ];
+        let report = build_report(issues, 15, vec!["skills", "agents", "mcp", "proposals"]);
+        // No critical/error -> floor 75
+        assert!(
+            report.score >= 75,
+            "mixed warning/info should floor at 75, got {}",
+            report.score
+        );
+        assert_eq!(report.status.as_deref(), Some("good"));
+        let s = report.summary.unwrap();
+        assert!(!s.module_scores.is_empty());
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 9：某个模块无数据不影响其他模块评分
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_module_with_no_issues_keeps_full_weight() {
+        let issues = vec![issue("warning", "Skill")];
+        let report = build_report(issues, 5, vec!["skills", "agents", "mcp"]);
+        let s = report.summary.unwrap();
+        let agents_score = s
+            .module_scores
+            .iter()
+            .find(|m| m.module == "agents")
+            .unwrap();
+        assert_eq!(
+            agents_score.score, agents_score.weight,
+            "agents should be full score"
+        );
+        assert_eq!(agents_score.penalty, 0.0);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 10：score 不为 0（除非极端）
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_score_never_zero_unless_extreme() {
+        let issues: Vec<HealthIssue> = (0..50)
+            .map(|i| issue("warning", if i % 2 == 0 { "Skill" } else { "Agent" }))
+            .collect();
+        let report = build_report(issues, 10, vec!["skills", "agents"]);
+        assert!(
+            report.score > 0,
+            "50 warnings should not produce score 0, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 11：index critical 封顶 69
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_index_critical_cap_69() {
+        let issues = vec![issue("critical", "Index")];
+        let report = build_report(issues, 10, vec!["indexes"]);
+        assert!(
+            report.score <= 69,
+            "index critical should cap at 69, got {}",
+            report.score
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 测试 12：报告字段完整性
+    // ════════════════════════════════════════════════════════════
+    #[test]
+    fn test_report_fields_complete() {
+        let issues = vec![issue("warning", "Skill")];
+        let report = build_report(issues, 5, vec!["skills"]);
+
+        assert!(report.score >= 0 && report.score <= 100);
+        assert!(report.status.is_some());
+        assert!(!report.issues.is_empty());
+        assert!(chrono::DateTime::parse_from_rfc3339(&report.generated_at).is_ok());
+
+        let s = report.summary.as_ref().expect("summary should exist");
+        assert!(s.checked_resources > 0);
+        assert!(!s.checked_categories.is_empty());
+        assert!(!s.issue_counts.is_empty());
+        assert!(!s.score_explanation.is_empty());
+        assert!(!s.module_scores.is_empty());
+        for ms in &s.module_scores {
+            assert!(!ms.module.is_empty());
+            assert!(!ms.label.is_empty());
+            assert!(ms.weight > 0.0);
+            assert!(ms.score >= 0.0 && ms.score <= ms.weight);
+        }
     }
 }

@@ -23,14 +23,18 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "error", "Index", "index",
+                "error",
+                "Index",
+                "index",
                 "Binding 引用不存在的 project",
                 format!("binding {bid} → project_id={pid} 不存在"),
                 "删除失效 binding 或修正 project_id。",
             )
             .with_resource(Some(format!("binding:{bid}")), None)
             .with_resource_id("Binding", &bid)
-            .with_evidence(&format!("project_id={pid}, resource_type={rtype}, resource_id={rid}")),
+            .with_evidence(&format!(
+                "project_id={pid}, resource_type={rtype}, resource_id={rid}"
+            )),
         );
     }
 
@@ -52,14 +56,18 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "error", "Index", "index",
+                "error",
+                "Index",
+                "index",
                 "Binding 引用不存在的 resource",
                 format!("binding {bid} → resource_type={rtype}, resource_id={rid} 不存在"),
                 "删除失效 binding 或修正引用。",
             )
             .with_resource(Some(format!("binding:{bid}")), None)
             .with_resource_id("Binding", &bid)
-            .with_evidence(&format!("resource_type={rtype}, resource_id={rid}, project_id={pid}")),
+            .with_evidence(&format!(
+                "resource_type={rtype}, resource_id={rid}, project_id={pid}"
+            )),
         );
     }
 
@@ -78,7 +86,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "Skill source_id 悬空",
                 format!("Skill '{sname}' 的 source_id={source_id} 不存在"),
                 "修正 source_id 或清除引用。",
@@ -105,7 +115,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "Usage event 引用不存在的 resource",
                 format!("event {eid} → resource_type={rtype}, resource_id={rid}"),
                 "清理失效事件或修正引用。",
@@ -133,7 +145,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "Proposal 引用不存在的 resource",
                 format!("proposal {pid} → resource_type={rtype}, resource_id={rid}"),
                 "删除失效 proposal 或修正引用。",
@@ -145,18 +159,19 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
     }
 
     // 6. 重复 skill path
-    let dup_skills: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT path, COUNT(*) as cnt FROM skills GROUP BY path HAVING cnt > 1",
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    let dup_skills: Vec<(String, i64)> =
+        sqlx::query_as("SELECT path, COUNT(*) as cnt FROM skills GROUP BY path HAVING cnt > 1")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| e.to_string())?;
 
     for (path, cnt) in dup_skills {
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "重复 Skill 路径",
                 format!("路径被 {cnt} 个 Skill 记录引用: {path}"),
                 "清理重复索引，保留唯一记录。",
@@ -177,7 +192,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "重复 Memory 路径",
                 format!("路径被 {cnt} 个 Memory 记录引用: {path}"),
                 "清理重复索引。",
@@ -199,7 +216,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "重复 Agent key",
                 format!("agent_key '{key}' 被多个 active Agent 引用 (count={cnt})"),
                 "确认是否为重复登记，合并或忽略多余的 Agent。",
@@ -220,7 +239,9 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         checked += 1;
         issues.push(
             HealthIssue::new(
-                "warning", "Index", "index",
+                "warning",
+                "Index",
+                "index",
                 "重复 Knowledge 路径",
                 format!("路径被 {cnt} 个 Knowledge 记录引用: {path}"),
                 "清理重复索引。",

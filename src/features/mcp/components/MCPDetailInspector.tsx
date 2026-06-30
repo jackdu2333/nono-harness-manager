@@ -30,7 +30,7 @@ export function MCPDetailInspector({ server }: Props) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
         <Box className="w-12 h-12 mb-4 opacity-50 text-muted-foreground/50" />
-        <h3 className="text-lg font-medium text-foreground mb-1">{t('mcp.no_selection', 'No Server Selected')}</h3>
+        <h3 className="text-lg font-medium text-foreground mb-1">{t('mcp.no_selection')}</h3>
         <p className="text-sm max-w-sm">
           {t('mcp.select_prompt', 'Select an MCP server from the list to view its details, configuration, and tools.')}
         </p>

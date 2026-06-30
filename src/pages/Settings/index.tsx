@@ -287,7 +287,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 <h3 className="text-base font-medium text-foreground">{t('settings.ai_title')}</h3>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">
                   Experimental
                 </span>
               </div>
@@ -352,7 +352,7 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
                   API Key
                   {aiSettings?.has_api_key && (
-                    <span className="ml-2 text-emerald-600 dark:text-emerald-400">{t('settings.api_key_set')}</span>
+                    <span className="ml-2 text-success">{t('settings.api_key_set')}</span>
                   )}
                 </label>
                 <div className="flex gap-2">
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                   {t('settings.test_connection')}
                 </Button>
                 {aiTestResult && (
-                  <span className={`flex items-center gap-1 text-xs ${aiTestResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <span className={`flex items-center gap-1 text-xs ${aiTestResult.success ? 'text-success' : 'text-destructive'}`}>
                     {aiTestResult.success ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                     {aiTestResult.message}
                   </span>

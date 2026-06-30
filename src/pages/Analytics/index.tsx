@@ -392,7 +392,7 @@ export default function AnalyticsPage() {
                     <td className="p-3">
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         event.resource_type === 'skill' 
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                          ? 'bg-info/10 text-info'
                           : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                       }`}>
                         {event.resource_type}
