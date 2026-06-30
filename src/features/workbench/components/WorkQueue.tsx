@@ -1,5 +1,6 @@
 import { Inbox, ChevronRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import type { WorkQueueItem, WorkQueuePriority } from '../types';
 
 interface WorkQueueProps {
@@ -7,18 +8,24 @@ interface WorkQueueProps {
   onNavigate: (path: string) => void;
 }
 
-const priorityConfig: Record<WorkQueuePriority, { label: string; color: string; bg: string }> = {
-  high: { label: '高', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-500/10' },
-  medium: { label: '中', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10' },
-  low: { label: '低', color: 'text-sky-700 dark:text-sky-400', bg: 'bg-sky-500/10' },
+const priorityConfig: Record<WorkQueuePriority, { color: string; bg: string }> = {
+  high: { color: 'text-destructive', bg: 'bg-destructive/10' },
+  medium: { color: 'text-warning', bg: 'bg-warning/10' },
+  low: { color: 'text-info', bg: 'bg-info/10' },
 };
 
 export function WorkQueue({ items, onNavigate }: WorkQueueProps) {
+  const { t } = useTranslation();
+  const priorityLabel: Record<WorkQueuePriority, string> = {
+    high: t('workbench.priority_high'),
+    medium: t('workbench.priority_medium'),
+    low: t('workbench.priority_low'),
+  };
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-5 py-3">
         <Inbox className="w-4 h-4 text-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">待处理队列</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t('workbench.work_queue')}</h2>
         {items.length > 0 && (
           <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground tabular-nums">
             {items.length}
@@ -29,7 +36,7 @@ export function WorkQueue({ items, onNavigate }: WorkQueueProps) {
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
           <Inbox className="w-6 h-6 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">队列已清空</p>
+          <p className="text-sm text-muted-foreground">{t('workbench.queue_empty')}</p>
         </div>
       ) : (
         <div>
@@ -43,7 +50,7 @@ export function WorkQueue({ items, onNavigate }: WorkQueueProps) {
                 <span
                   className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pConfig.bg} ${pConfig.color}`}
                 >
-                  {pConfig.label}
+                  {priorityLabel[item.priority]}
                 </span>
 
                 <div className="flex-1 min-w-0">
@@ -61,7 +68,7 @@ export function WorkQueue({ items, onNavigate }: WorkQueueProps) {
                   className="h-7 text-xs gap-1"
                   onClick={() => onNavigate(item.target_path)}
                 >
-                  处理
+                  {t('workbench.process')}
                   <ChevronRight className="w-3 h-3" />
                 </Button>
 
@@ -70,10 +77,10 @@ export function WorkQueue({ items, onNavigate }: WorkQueueProps) {
                   size="sm"
                   className="h-7 text-xs gap-1 opacity-40 cursor-not-allowed"
                   disabled
-                  title="Phase 2 可用"
+                  title={t('workbench.ai_analyze_soon')}
                 >
                   <Sparkles className="w-3 h-3" />
-                  AI 分析
+                  {t('workbench.ai_analyze')}
                 </Button>
               </div>
             );

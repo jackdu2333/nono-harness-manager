@@ -1,5 +1,6 @@
 import { X, AlertCircle, AlertTriangle, Info, ArrowRight, FileText, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import type { AnalysisReport, AnalysisFinding, SuggestionSeverity } from '../types';
 
 interface AnalysisReportPanelProps {
@@ -23,15 +24,15 @@ const severityIcon: Record<SuggestionSeverity, React.ComponentType<{ className?:
 };
 
 const severityColor: Record<SuggestionSeverity, string> = {
-  critical: 'text-red-600 dark:text-red-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  info: 'text-sky-600 dark:text-sky-400',
+  critical: 'text-destructive',
+  warning: 'text-warning',
+  info: 'text-info',
 };
 
 const severityBadge: Record<SuggestionSeverity, string> = {
-  critical: 'bg-red-500/10 text-red-700 dark:text-red-400',
-  warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  info: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  critical: 'bg-destructive/10 text-destructive',
+  warning: 'bg-warning/10 text-warning',
+  info: 'bg-info/10 text-info',
 };
 
 export function AnalysisReportPanel({ report, onClose, onNavigate }: AnalysisReportPanelProps) {

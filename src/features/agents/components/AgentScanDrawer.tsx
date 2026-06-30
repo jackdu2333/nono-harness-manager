@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FolderSearch, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   open: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function AgentScanDrawer({ open, onOpenChange, onScan, isScanning }: Props) {
+  const { t } = useTranslation();
   const [scanPath, setScanPath] = useState('');
 
   const handleScan = async () => {
@@ -27,20 +29,20 @@ export function AgentScanDrawer({ open, onOpenChange, onScan, isScanning }: Prop
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FolderSearch className="w-5 h-5 text-primary" />
-            扫描 Agent 目录
+            {t('agents.scan_title')}
           </SheetTitle>
           <SheetDescription>
-            输入本地目录路径，我们将扫描该目录以发现并添加本机的 Agent 客户端。
+            {t('agents.scan_desc')}
           </SheetDescription>
         </SheetHeader>
 
         <div className="my-8 flex flex-col gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">目录路径</label>
-            <Input 
+            <label className="text-sm font-medium text-foreground">{t('common.dir_path')}</label>
+            <Input
               value={scanPath}
               onChange={(e) => setScanPath(e.target.value)}
-              placeholder="例如: ~/.gemini/ 或 /Applications/"
+              placeholder={t('agents.scan_example')}
               onKeyDown={(e) => e.key === 'Enter' && handleScan()}
               autoFocus
             />
@@ -49,15 +51,15 @@ export function AgentScanDrawer({ open, onOpenChange, onScan, isScanning }: Prop
 
         <SheetFooter className="sm:justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isScanning}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleScan} disabled={!scanPath.trim() || isScanning}>
             {isScanning ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> 扫描中...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('common.scanning')}
               </>
             ) : (
-              '开始扫描'
+              t('common.start_scan')
             )}
           </Button>
         </SheetFooter>

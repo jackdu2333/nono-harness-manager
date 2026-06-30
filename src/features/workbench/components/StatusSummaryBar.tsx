@@ -1,4 +1,5 @@
 import { Layers, Cpu, Box, ShieldCheck, HeartPulse, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface StatusSummaryBarProps {
   skillsCount: number;
@@ -67,7 +68,7 @@ export function StatusSummaryBar({
             onClick={() => onNavigate(card.path)}
             className={`flex flex-col justify-center h-[72px] rounded-lg border p-3 transition-colors hover:bg-accent/50 select-none ${
               isWarning
-                ? 'border-amber-300/50 dark:border-amber-500/30 bg-amber-500/[0.02]'
+                ? 'border-warning/30 bg-warning/[0.02]'
                 : 'border-border bg-card'
             }`}
           >
@@ -75,9 +76,9 @@ export function StatusSummaryBar({
               <Icon
                 className={`w-3.5 h-3.5 ${
                   isWarning
-                    ? 'text-amber-600 dark:text-amber-400'
+                    ? 'text-warning'
                     : isInfo
-                      ? 'text-sky-600 dark:text-sky-400'
+                      ? 'text-info'
                       : 'text-muted-foreground/75'
                 }`}
               />
@@ -88,7 +89,7 @@ export function StatusSummaryBar({
                 typeof card.value === 'number' && card.value === 0
                   ? 'text-muted-foreground/30'
                   : isWarning
-                    ? 'text-amber-700 dark:text-amber-400'
+                    ? 'text-warning'
                     : 'text-foreground'
               }`}
             >

@@ -24,6 +24,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   agents: Agent[];
@@ -34,6 +35,7 @@ const dropAnimationConfig = {
 };
 
 function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDragOverlay?: boolean }) {
+  const { t } = useTranslation();
   const launchAgent = useAgentsStore(s => s.launchAgent);
   const brand = getAgentBrandStyles(agent.name, agent.type);
   const Icon = brand.Icon;
@@ -60,7 +62,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
       <div 
         ref={setNodeRef}
         style={style}
-        className="h-12 min-w-0 flex-1 max-w-[260px] rounded-md border-2 border-dashed border-blue-500/30 bg-blue-50/50 opacity-50"
+        className="h-12 min-w-0 flex-1 max-w-[260px] rounded-md border-2 border-dashed border-primary/30 bg-primary/5 opacity-50"
       />
     );
   }
@@ -71,8 +73,8 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
       style={style}
       className={`group flex items-center justify-between px-3 py-2 rounded-md border transition-all h-12 min-w-0 flex-1 max-w-[260px]
         ${isDragOverlay 
-          ? 'cursor-grabbing bg-white/90 backdrop-blur-xl border-blue-200 shadow-xl shadow-black/10 scale-105 z-50 ring-1 ring-blue-500/20' 
-          : 'bg-white border-[#E6E7EB] shadow-sm hover:border-gray-300 hover:shadow-md'
+          ? 'cursor-grabbing bg-card/90 backdrop-blur-xl border-primary/30 shadow-xl shadow-black/10 scale-105 z-50 ring-1 ring-ring/20' 
+          : 'bg-card border-border shadow-sm hover:border-border hover:shadow-md'
         }
       `}
     >
@@ -81,7 +83,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
           {...attributes} 
           {...listeners}
           className={`-ml-1 rounded transition-colors
-            ${isDragOverlay ? 'text-blue-500 cursor-grabbing' : 'text-[#8B8E98]/40 hover:text-[#8B8E98] cursor-grab'}
+            ${isDragOverlay ? 'text-primary cursor-grabbing' : 'text-muted-foreground/40 hover:text-muted-foreground cursor-grab'}
           `}
         >
           <GripVertical className="w-3.5 h-3.5" />
@@ -95,11 +97,11 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className={`font-semibold text-xs truncate max-w-[80px] ${isDragOverlay ? 'text-blue-600' : 'text-[#1F2328]'}`} title={agent.name}>{agent.name}</span>
-            <span className="text-[10px] text-[#8B8E98] shrink-0">·</span>
-            <span className="text-[10px] text-[#8B8E98] shrink-0">{agent.type || 'Agent'}</span>
-            <span className="text-[10px] text-[#8B8E98] shrink-0">·</span>
-            <span className={`text-[10px] shrink-0 ${isLaunchable ? 'text-[#22C55E]' : 'text-[#8B8E98]'}`}>{isLaunchable ? '可启动' : '不可启动'}</span>
+            <span className={`font-semibold text-xs truncate max-w-[80px] ${isDragOverlay ? 'text-primary' : 'text-foreground'}`} title={agent.name}>{agent.name}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">·</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">{agent.type || 'Agent'}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">·</span>
+            <span className={`text-[10px] shrink-0 ${isLaunchable ? 'text-success' : 'text-muted-foreground'}`}>{isLaunchable ? t('agents.launchable_yes') : t('agents.launchable_no')}</span>
           </div>
         </div>
       </div>
@@ -107,9 +109,9 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
         onClick={() => isLaunchable && !isDragOverlay && launchAgent(agent.id)}
         disabled={!isLaunchable || isDragOverlay}
         className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors ml-2
-          ${isDragOverlay ? 'bg-blue-500 text-white shadow-sm' : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white disabled:opacity-30 disabled:hover:bg-blue-50 disabled:hover:text-blue-600'}
+          ${isDragOverlay ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary'}
         `}
-        title={isLaunchable ? "启动" : "不可启动"}
+        title={isLaunchable ? t('agents.launch') : t('agents.launchable_no')}
       >
         <Play className="w-2.5 h-2.5 ml-0.5 fill-current" />
       </button>
@@ -118,6 +120,7 @@ function PinnedAgentCard({ agent, isDragOverlay = false }: { agent: Agent, isDra
 }
 
 export function PinnedAgentsBar({ agents }: Props) {
+  const { t } = useTranslation();
   const reorderAgents = useAgentsStore(s => s.reorderAgents);
   const [activeId, setActiveId] = useState<string | null>(null);
   
@@ -146,15 +149,15 @@ export function PinnedAgentsBar({ agents }: Props) {
   if (agents.length === 0) return null;
 
   return (
-    <div className="w-full min-w-0 px-6 py-2.5 border-b border-[#E6E7EB] bg-[#F7F7F8] shrink-0 relative z-20 flex items-center gap-4 overflow-hidden">
+    <div className="w-full min-w-0 px-6 py-2.5 border-b border-border bg-background shrink-0 relative z-20 flex items-center gap-4 overflow-hidden">
       <div className="flex flex-col shrink-0">
-        <h3 className="text-[11px] font-bold text-[#1F2328] uppercase tracking-wider flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-          常用启动
+        <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+          {t('agents.frequent_launch')}
         </h3>
       </div>
       
-      <div className="w-px h-6 bg-[#E6E7EB] shrink-0"></div>
+      <div className="w-px h-6 bg-border shrink-0"></div>
       
       <DndContext 
         sensors={sensors} 

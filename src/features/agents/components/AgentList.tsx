@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAgentsStore } from '../store';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   agents: Agent[];
@@ -36,6 +37,7 @@ const dropAnimationConfig = {
 };
 
 export function AgentList({ agents, selectedId, onSelect, onOpenScanDrawer, onDiscoverSystem, isScanning }: Props) {
+  const { t } = useTranslation();
   const reorderAgents = useAgentsStore(s => s.reorderAgents);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -71,13 +73,13 @@ export function AgentList({ agents, selectedId, onSelect, onOpenScanDrawer, onDi
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
         <Box className="w-16 h-16 mb-4 opacity-50 text-muted-foreground/50" />
-        <h3 className="text-xl font-medium text-foreground mb-2">尚未发现 Agent 客户端</h3>
+        <h3 className="text-xl font-medium text-foreground mb-2">{t('agents.no_agents_title')}</h3>
         <p className="text-sm max-w-sm mb-6">
-          你可以自动发现本机常见 Agent 客户端，或手动扫描本地目录。
+          {t('agents.no_agents_desc')}
         </p>
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={onDiscoverSystem}>自动发现本机客户端</Button>
-          <Button onClick={onOpenScanDrawer}>扫描本地目录</Button>
+          <Button variant="secondary" onClick={onDiscoverSystem}>{t('agents.auto_discover_local')}</Button>
+          <Button onClick={onOpenScanDrawer}>{t('agents.scan_local_dir')}</Button>
         </div>
       </div>
     );

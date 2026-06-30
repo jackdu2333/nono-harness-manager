@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MessageSquare, Send, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -212,7 +213,7 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
           <div>
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
               问问 Harness
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold uppercase">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning font-bold uppercase">
                 AI
               </span>
             </h2>
@@ -259,7 +260,7 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
                     <div className="max-w-[760px] w-full space-y-3">
                       {/* Tool Calls Summary Block */}
                       {msg.tool_calls_summary && msg.tool_calls_summary.length > 0 && (
-                        <div className="p-3 bg-muted/40 dark:bg-zinc-800/40 rounded-lg border border-border/80 text-[11px] font-mono text-muted-foreground max-w-xl">
+                        <div className="p-3 bg-muted/40 dark:bg-muted/40 rounded-lg border border-border/80 text-[11px] font-mono text-muted-foreground max-w-xl">
                           <div className="flex items-center gap-1.5 mb-2 font-semibold text-foreground">
                             <span>🔧</span>
                             <span>调用了 {msg.tool_calls_summary.length} 个工具</span>
@@ -273,9 +274,9 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
                                 </span>
                                 <span className="shrink-0 flex items-center gap-1">
                                   {summary.success ? (
-                                    <span className="text-green-500 font-bold">✓</span>
+                                    <span className="text-success font-bold">✓</span>
                                   ) : (
-                                    <span className="text-red-500 font-bold">✗</span>
+                                    <span className="text-destructive font-bold">✗</span>
                                   )}
                                   <span>{summary.duration_ms}ms</span>
                                 </span>
@@ -352,8 +353,8 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
 
       {/* Error */}
       {error && (
-        <div className="border-t border-border px-5 py-2 bg-red-500/5 shrink-0">
-          <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+        <div className="border-t border-border px-5 py-2 bg-destructive/5 shrink-0">
+          <p className="text-xs text-destructive flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {error}
           </p>

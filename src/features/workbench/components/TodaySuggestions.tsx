@@ -1,5 +1,6 @@
 import { Lightbulb, Layers, Cpu, Box, ShieldAlert, Sparkles, UserCheck, ArrowRight, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface RuleSuggestion {
   id: string;
@@ -30,73 +31,74 @@ export function TodaySuggestions({
   onAskAI,
   aiEnabled,
 }: TodaySuggestionsProps) {
+  const { t } = useTranslation();
   const list: RuleSuggestion[] = [
     {
       id: 'missing_desc',
-      title: 'Skills 缺少描述',
+      title: t('workbench.suggestion_skills_missing_desc'),
       count: skills.filter(s => s.is_archived === 0 && !s.description).length,
       severity: 'info' as const,
       path: '/skills',
       icon: Layers,
-      prompt: '分析一下当前缺少描述的 Skills，并给出补全建议。',
+      prompt: t('workbench.suggestion_skills_missing_prompt'),
     },
     {
       id: 'needs_imp',
-      title: 'Skills 待进化',
+      title: t('workbench.suggestion_skills_evolve'),
       count: skills.filter(s => s.is_archived === 0 && s.needs_improvement === 1).length,
       severity: 'info' as const,
       path: '/skills',
       icon: Sparkles,
-      prompt: '分析一下当前待进化的 Skills，帮我规划治理方向。',
+      prompt: t('workbench.suggestion_skills_evolve_prompt'),
     },
     {
       id: 'agent_confirm',
-      title: 'Agents 待确认',
+      title: t('workbench.suggestion_agents_pending'),
       count: agents.filter(a => a.status === 'candidate').length,
       severity: 'warning' as const,
       path: '/agents',
       icon: Cpu,
-      prompt: '检查一下待确认的 Agents，看是否安全且建议启用。',
+      prompt: t('workbench.suggestion_agents_pending_prompt'),
     },
     {
       id: 'mcp_error',
-      title: 'MCP 配置异常',
+      title: t('workbench.suggestion_mcp_error'),
       count: mcpServers.filter(m => m.status === 'abnormal').length,
       severity: 'critical' as const,
       path: '/mcp',
       icon: Box,
-      prompt: '分析一下当前异常的 MCP 服务，找出报错原因和排查建议。',
+      prompt: t('workbench.suggestion_mcp_error_prompt'),
     },
     {
       id: 'proposal_pending',
-      title: 'Proposals 待确认',
+      title: t('workbench.suggestion_proposals_pending'),
       count: proposals.filter(p => p.status === 'pending' || p.status === 'pending_review' || p.status === 'pending_manual_review').length,
       severity: 'warning' as const,
       path: '/proposals',
       icon: UserCheck,
-      prompt: '审查一下当前的待确认 Proposals 治理提案。',
+      prompt: t('workbench.suggestion_proposals_pending_prompt'),
     },
     {
       id: 'proposal_blocked',
-      title: 'Proposals 被拦截',
+      title: t('workbench.suggestion_proposals_blocked'),
       count: proposals.filter(p => p.status === 'blocked').length,
       severity: 'critical' as const,
       path: '/proposals',
       icon: ShieldAlert,
-      prompt: '分析一下被拦截的 Proposals 安全事件。',
+      prompt: t('workbench.suggestion_proposals_blocked_prompt'),
     },
   ].filter(item => item.count > 0);
 
   const severityColors = {
-    info: 'border-l-sky-500 bg-sky-500/[0.01]',
-    warning: 'border-l-amber-500 bg-amber-500/[0.01]',
-    critical: 'border-l-red-500 bg-red-500/[0.01]',
+    info: 'border-l-sky-500 bg-info/[0.01]',
+    warning: 'border-l-amber-500 bg-warning/[0.01]',
+    critical: 'border-l-red-500 bg-destructive/[0.01]',
   };
 
   const badgeColors = {
-    info: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
-    warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    critical: 'bg-red-500/10 text-red-700 dark:text-red-400',
+    info: 'bg-info/10 text-info',
+    warning: 'bg-warning/10 text-warning',
+    critical: 'bg-destructive/10 text-destructive',
   };
 
   return (
@@ -104,13 +106,13 @@ export function TodaySuggestions({
       <div className="flex items-center gap-2 mb-3">
         <Lightbulb className="w-4 h-4 text-primary animate-pulse-slow" />
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-          今日建议
+          {t('workbench.today_suggestions')}
         </h3>
       </div>
 
       {list.length === 0 ? (
         <div className="py-6 text-center bg-muted/10 rounded border border-dashed border-border flex flex-col items-center justify-center">
-          <p className="text-xs text-muted-foreground/60">🎉 本机 AI 资产状态良好，暂无优化建议。</p>
+          <p className="text-xs text-muted-foreground/60">{t('workbench.all_good')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -136,7 +138,7 @@ export function TodaySuggestions({
                     className="h-6 text-[10px] px-1.5 gap-0.5 hover:bg-muted font-medium"
                     onClick={() => onNavigate(item.path)}
                   >
-                    去查看
+                    {t('workbench.go_view')}
                     <ArrowRight className="w-2.5 h-2.5" />
                   </Button>
                   {aiEnabled && (
@@ -145,7 +147,7 @@ export function TodaySuggestions({
                       size="sm"
                       className="h-6 w-6 p-0 hover:bg-muted text-primary"
                       onClick={() => onAskAI(item.prompt)}
-                      title="让 AI 分析"
+                      title={t('workbench.let_ai_analyze')}
                     >
                       <BrainCircuit className="w-3 h-3" />
                     </Button>

@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod commands;
 pub mod db;
+pub mod health;
 pub mod models;
 pub mod scanner;
 pub mod security;

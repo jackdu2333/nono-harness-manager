@@ -3,6 +3,7 @@ import { RefreshCw, ScanLine, Search, Plus, Bot, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   totalCount: number;
@@ -39,42 +40,43 @@ export function AgentsToolbar({
   launchableFilter, setLaunchableFilter,
   onRefresh, isLoading, onDiscoverSystem, onOpenScanDrawer 
 }: Props) {
+  const { t } = useTranslation();
   
   return (
-    <div className="flex-shrink-0 w-full min-w-0 border-b border-[#E6E7EB] bg-white z-10 px-6 py-4 flex flex-col gap-4 shadow-sm overflow-hidden">
+    <div className="flex-shrink-0 w-full min-w-0 border-b border-border bg-card z-10 px-6 py-4 flex flex-col gap-4 shadow-sm overflow-hidden">
       {/* Row 1: Title, Subtitle & Primary Actions / Stats */}
       <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-4">
         
         <div className="flex items-center gap-4">
-          <div className="p-2 bg-blue-50 rounded-lg shrink-0 border border-blue-100">
-            <Bot className="w-5 h-5 text-blue-600" />
+          <div className="p-2 bg-primary/10 rounded-lg shrink-0 border border-primary/20">
+            <Bot className="w-5 h-5 text-primary" />
           </div>
           <div className="flex flex-col">
-            <h1 className="text-lg font-bold text-[#1F2328] tracking-tight">智能体客户端</h1>
-            <span className="text-xs text-[#8B8E98]">管理本机 Agent 客户端、CLI、桌面应用和日志适配状态</span>
+            <h1 className="text-lg font-bold text-foreground tracking-tight">{t('agents.toolbar_title')}</h1>
+            <span className="text-xs text-muted-foreground">{t('agents.toolbar_desc')}</span>
           </div>
         </div>
         
         <div className="flex items-center gap-3 ml-auto flex-wrap justify-end">
           {/* Stats Chips */}
           <div className="hidden lg:flex items-center gap-2 mr-2">
-            <StatChip label="全部" count={totalCount} />
-            <StatChip label="可用" count={availableCount} color="green" />
-            <StatChip label="待确认" count={pendingCount} color="yellow" />
-            <StatChip label="可启动" count={launchableCount} color="blue" />
-            <StatChip label="日志可用" count={logAvailableCount} />
-            <StatChip label="异常" count={errorCount} color="red" />
+            <StatChip label={t('agents.filter_all')} count={totalCount} />
+            <StatChip label={t('agents.filter_active')} count={availableCount} color="green" />
+            <StatChip label={t('agents.filter_pending')} count={pendingCount} color="yellow" />
+            <StatChip label={t('agents.filter_launchable')} count={launchableCount} color="blue" />
+            <StatChip label={t('agents.filter_log_ok')} count={logAvailableCount} />
+            <StatChip label={t('agents.filter_broken')} count={errorCount} color="red" />
           </div>
           
-          <div className="w-px h-6 bg-[#E6E7EB] hidden lg:block mx-1"></div>
+          <div className="w-px h-6 bg-border hidden lg:block mx-1"></div>
           
-          <Button onClick={onDiscoverSystem} disabled={isLoading} size="sm" className="h-8 gap-2 bg-[#1F2328] text-white hover:bg-[#323842] shadow-sm transition-all">
-            <ScanLine className="w-3.5 h-3.5" /> 自动发现
+          <Button onClick={onDiscoverSystem} disabled={isLoading} size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all">
+            <ScanLine className="w-3.5 h-3.5" /> {t('common.auto_discover')}
           </Button>
-          <Button onClick={onOpenScanDrawer} variant="outline" size="sm" className="h-8 gap-2 shadow-sm border-[#E6E7EB] text-[#1F2328] hover:bg-gray-50">
-            <Plus className="w-3.5 h-3.5" /> 扫描目录
+          <Button onClick={onOpenScanDrawer} variant="outline" size="sm" className="h-8 gap-2 shadow-sm border-border text-foreground hover:bg-muted/50">
+            <Plus className="w-3.5 h-3.5" /> {t('common.scan_dir')}
           </Button>
-          <Button variant="outline" size="icon" onClick={onRefresh} disabled={isLoading} className="h-8 w-8 shadow-sm border-[#E6E7EB] text-[#1F2328] hover:bg-gray-50">
+          <Button variant="outline" size="icon" onClick={onRefresh} disabled={isLoading} className="h-8 w-8 shadow-sm border-border text-foreground hover:bg-muted/50">
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -83,17 +85,17 @@ export function AgentsToolbar({
       {/* Row 2: Search & Advanced Filters */}
       <div className="flex min-w-0 items-center gap-3">
         <div className="relative w-[280px] shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B8E98]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="搜索 Agent 名称、路径或 Bundle ID..."
+            placeholder={t('agents.search_placeholder_full')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-8 bg-gray-50 border-[#E6E7EB] text-xs focus-visible:ring-1 focus-visible:ring-blue-500 rounded-md"
+            className="pl-9 h-8 bg-muted/50 border-border text-xs focus-visible:ring-1 focus-visible:ring-ring rounded-md"
           />
         </div>
         
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-hidden pb-1">
-          <div className="flex items-center gap-1.5 px-2 text-[#8B8E98]">
+          <div className="flex items-center gap-1.5 px-2 text-muted-foreground">
             <Filter className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">筛选</span>
           </div>
@@ -102,21 +104,21 @@ export function AgentsToolbar({
             value={typeFilter} 
             onChange={setTypeFilter} 
             options={[
-              { value: 'all', label: '类型: 全部' },
-              { value: 'App', label: 'App (桌面客户端)' },
-              { value: 'CLI', label: 'CLI (命令行)' },
-              { value: 'ConfigOnly', label: '配置/日志' },
+              { value: 'all', label: t('agents.type_all') },
+              { value: 'App', label: t('agents.type_app') },
+              { value: 'CLI', label: t('agents.type_cli') },
+              { value: 'ConfigOnly', label: t('agents.type_config') },
             ]} 
           />
           <FilterSelect 
             value={statusFilter} 
             onChange={setStatusFilter} 
             options={[
-              { value: 'all', label: '状态: 全部' },
-              { value: 'active', label: '正常 (Active)' },
-              { value: 'pending', label: '待确认 (Pending)' },
-              { value: 'ignored', label: '已忽略 (Ignored)' },
-              { value: 'broken', label: '异常 (Broken)' },
+              { value: 'all', label: t('agents.status_all') },
+              { value: 'active', label: t('agents.status_active') },
+              { value: 'pending', label: t('agents.status_pending') },
+              { value: 'ignored', label: t('agents.status_ignored') },
+              { value: 'broken', label: t('agents.status_broken') },
             ]} 
           />
 
@@ -128,11 +130,11 @@ export function AgentsToolbar({
 
 function StatChip({ label, count, color = 'gray' }: { label: string, count: number, color?: 'gray' | 'green' | 'yellow' | 'red' | 'blue' }) {
   const colorStyles = {
-    gray: 'bg-gray-100 text-[#8B8E98] border-gray-200',
-    green: 'bg-green-50 text-[#22C55E] border-green-200',
-    yellow: 'bg-amber-50 text-[#F59E0B] border-amber-200',
-    red: 'bg-red-50 text-[#EF4444] border-red-200',
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    gray: 'bg-muted text-muted-foreground border-border',
+    green: 'bg-success/10 text-success border-success/30',
+    yellow: 'bg-warning/10 text-warning border-warning/30',
+    red: 'bg-destructive/10 text-destructive border-destructive/30',
+    blue: 'bg-primary/10 text-primary border-primary/30',
   };
   
   return (
@@ -146,7 +148,7 @@ function StatChip({ label, count, color = 'gray' }: { label: string, count: numb
 function FilterSelect({ value, onChange, options }: { value: string, onChange: (val: string) => void, options: {value: string, label: string}[] }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 text-xs bg-white border-[#E6E7EB] hover:bg-gray-50 focus:ring-1 focus:ring-blue-500 w-[132px] min-w-0">
+      <SelectTrigger className="h-8 text-xs bg-card border-border hover:bg-muted/50 focus:ring-1 focus:ring-ring w-[132px] min-w-0">
         <SelectValue placeholder={options[0].label} />
       </SelectTrigger>
       <SelectContent>

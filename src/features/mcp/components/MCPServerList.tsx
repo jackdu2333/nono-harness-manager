@@ -3,6 +3,7 @@ import { McpServer } from '../types';
 import { MCPServerListItem } from './MCPServerListItem';
 import { Box, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   servers: McpServer[];
@@ -14,18 +15,19 @@ interface Props {
 }
 
 export function MCPServerList({ servers, selectedId, onSelect, onOpenScanDrawer, onDiscoverSystem, isScanning }: Props) {
-  
+  const { t } = useTranslation();
+
   if (servers.length === 0 && !isScanning) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
         <Box className="w-16 h-16 mb-4 opacity-50 text-muted-foreground/50" />
-        <h3 className="text-xl font-medium text-foreground mb-2">尚未发现 MCP Server</h3>
+        <h3 className="text-xl font-medium text-foreground mb-2">{t('mcp.no_servers_title')}</h3>
         <p className="text-sm max-w-sm mb-6">
-          你可以扫描本地目录，或从常见 Agent 配置中自动发现 MCP 配置。
+          {t('mcp.no_servers_hint')}
         </p>
         <div className="flex gap-3">
-          <Button onClick={onOpenScanDrawer}>扫描目录</Button>
-          <Button variant="secondary" onClick={onDiscoverSystem}>自动发现系统配置</Button>
+          <Button onClick={onOpenScanDrawer}>{t('mcp.scan_dir')}</Button>
+          <Button variant="secondary" onClick={onDiscoverSystem}>{t('mcp.auto_discover')}</Button>
         </div>
       </div>
     );
@@ -47,9 +49,9 @@ export function MCPServerList({ servers, selectedId, onSelect, onOpenScanDrawer,
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="flex flex-col">
           {servers.map(server => (
-            <MCPServerListItem 
-              key={server.id} 
-              server={server} 
+            <MCPServerListItem
+              key={server.id}
+              server={server}
               isSelected={server.id === selectedId}
               onSelect={onSelect}
             />

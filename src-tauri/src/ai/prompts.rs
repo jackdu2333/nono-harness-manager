@@ -141,10 +141,11 @@ fn tool_use_prompt(supports_tools: bool) -> String {
         "- Proposal 问题优先调用 list_pending_proposals。",
         "- 总览类问题优先调用 get_dashboard_summary。",
         "- 只有在以下情况才能调用 create_governance_proposal：",
-        "  1. 用户明确要求创建 proposal / 生成治理建议 / 写入 Proposals。",
+        "  1. 用户明确要求「创建 proposal」「生成提案」「写入 Proposals」「提交治理建议」「保存为 proposal」。",
         "  2. 用户点击了明确的创建类动作。",
         "  3. 你已通过工具确认 resource_type、resource_id、proposal_type、proposed_changes 均合法。",
-        "- 如果用户只是询问、分析、解释，不要直接创建 proposal，只在输出中列出“可创建的 Proposal 建议”。",
+        "- 如果用户只是说「分析一下」「给我建议」「生成治理计划」「下一步做什么」等模糊表达，",
+        "  不要直接创建 proposal，只在输出中列出「可创建的 Proposal 建议」。",
     ]
     .join("\n")
 }

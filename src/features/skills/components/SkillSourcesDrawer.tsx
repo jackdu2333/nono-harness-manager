@@ -19,7 +19,7 @@ export function SkillSourcesDrawer() {
     setIsAdding(true);
     setError(null);
     try {
-    const finalName = newName.trim() || newPath.split('/').filter(Boolean).pop() || '自定义资源库';
+    const finalName = newName.trim() || newPath.split('/').filter(Boolean).pop() || t('skills.custom_source');
     await addSource(finalName, newPath.trim(), 'local_dir', 3);
     setNewPath('');
     setNewName('');
@@ -44,7 +44,7 @@ export function SkillSourcesDrawer() {
       <SheetTrigger asChild>
         <Button variant="outline" className="h-9 border-border text-muted-foreground hover:text-foreground bg-card hover:bg-muted gap-2 shrink-0 shadow-sm transition-all text-sm">
           <Settings className="w-4 h-4 text-muted-foreground" />
-          资源库（{sources.length}）
+          {t('skills.sources_count_paren', { count: sources.length })}
         </Button>
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[500px] bg-background/95 backdrop-blur-xl border-l border-border/40 text-foreground flex flex-col p-0 shadow-2xl">
@@ -55,7 +55,7 @@ export function SkillSourcesDrawer() {
               {t('skills.sources_title')}
             </SheetTitle>
             <SheetDescription className="sr-only">
-              管理技能资源库：添加、扫描或删除目录。
+              {t('skills.manage_sources')}
             </SheetDescription>
           </SheetHeader>
 
@@ -101,7 +101,7 @@ export function SkillSourcesDrawer() {
                   <div className="font-medium text-foreground truncate">{source.name}</div>
                   <div className="text-xs text-muted-foreground font-mono truncate mt-0.5" title={source.path}>{source.path}</div>
                   {source.last_scanned_at && (
-                     <div className="text-[10px] text-muted-foreground/50 mt-1.5 font-medium tracking-wide">上次扫描: {new Date(source.last_scanned_at).toLocaleString()}</div>
+                     <div className="text-[10px] text-muted-foreground/50 mt-1.5 font-medium tracking-wide">{t('skills.last_scan_prefix')}{new Date(source.last_scanned_at).toLocaleString()}</div>
                   )}
                 </div>
                 <div className="flex gap-2 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">

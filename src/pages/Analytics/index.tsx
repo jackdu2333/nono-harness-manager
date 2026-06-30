@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BarChart3, 
-  RefreshCw, 
-  User, 
-  Cpu, 
-  BookOpen, 
-  TrendingUp, 
-  Activity, 
-  ListOrdered 
+import { useTranslation } from 'react-i18next';
+import {
+  BarChart3,
+  RefreshCw,
+  User,
+  Cpu,
+  BookOpen,
+  TrendingUp,
+  Activity,
+  ListOrdered
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SkillAnalysisDashboard } from '@/features/skills/components/SkillAnalysisDashboard';
@@ -29,6 +30,7 @@ function VisualMetricList({
   items: UsageMetric[]; 
   icon?: React.ReactNode 
 }) {
+  const { t } = useTranslation();
   const maxCount = items.length > 0 ? Math.max(...items.map(i => i.count)) : 0;
   return (
     <section className="border border-border bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -38,7 +40,7 @@ function VisualMetricList({
       </div>
       <div className="p-4 space-y-3">
         {items.length === 0 ? (
-          <div className="py-6 text-sm text-muted-foreground text-center">暂无日志推断记录</div>
+          <div className="py-6 text-sm text-muted-foreground text-center">{t('analytics.no_logs')}</div>
         ) : (
           items.map((item, index) => {
             const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
@@ -53,7 +55,7 @@ function VisualMetricList({
                       {item.key}
                     </span>
                   </div>
-                  <span className="text-primary font-semibold tabular-nums">{item.count} 次</span>
+                  <span className="text-primary font-semibold tabular-nums">{item.count} {t('common.times_unit')}</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                   <div 
@@ -78,6 +80,7 @@ function TrendTimeline({
   title: string; 
   items: UsageMetric[] 
 }) {
+  const { t } = useTranslation();
   const maxCount = items.length > 0 ? Math.max(...items.map(i => i.count)) : 0;
   return (
     <div className="flex flex-col h-full border border-border bg-card rounded-lg p-4 shadow-sm">
@@ -88,7 +91,7 @@ function TrendTimeline({
       <div className="flex-1 space-y-2.5 overflow-auto max-h-[220px] pr-1">
         {items.length === 0 ? (
           <div className="h-full flex items-center justify-center text-xs text-muted-foreground py-10">
-            暂无趋势数据
+            {t('analytics.no_trend')}
           </div>
         ) : (
           items.map(item => {
@@ -105,7 +108,7 @@ function TrendTimeline({
                   />
                 </div>
                 <span className="w-12 text-right font-medium text-foreground tabular-nums">
-                  {item.count}次
+                  {item.count} {t('common.times_unit')}
                 </span>
               </div>
             );
@@ -126,10 +129,11 @@ function MatrixTable({
   agentLabel: string; 
   resourceLabel: string 
 }) {
+  const { t } = useTranslation();
   if (!cells || cells.length === 0) {
     return (
       <div className="px-4 py-8 text-sm text-muted-foreground bg-card border border-border rounded-lg text-center shadow-sm">
-        暂无交叉矩阵统计数据。
+        {t('analytics.no_matrix')}
       </div>
     );
   }
@@ -141,7 +145,7 @@ function MatrixTable({
   return (
     <div className="border border-border bg-card rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-muted/20 text-xs font-semibold text-muted-foreground">
-        {agentLabel} × {resourceLabel} 矩阵 (可观测调用频次)
+        {t('analytics.matrix_title', { agent: agentLabel, resource: resourceLabel })}
       </div>
       <div className="overflow-auto max-w-full max-h-[300px]">
         <table className="w-full text-xs border-collapse text-left">
@@ -187,6 +191,7 @@ function MatrixTable({
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<'logs' | 'skills'>('logs');
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
@@ -242,24 +247,21 @@ export default function AnalyticsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" />
-            Agent 日志推断统计
+            {t('analytics.agent_stats')}
           </h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            系统通过扫描外部 Agent 客户端 (Codex / Antigravity / WorkBuddy / Newmax) 的本地日志，
-            推断 Skill 与 MCP 资源的可观测使用痕迹。
-            本页面所有统计指标均为<strong className="text-foreground">可观测调用次数（日志推断）</strong>，
-            不包含 Harness UI 主动管理操作。
+            {t('analytics.agent_stats_desc')}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           {scanStatus && (
             <span className="text-xs text-muted-foreground">
-              {isScanning ? '扫描中...' : scanStatus.last_finished_at ? `上次扫描: ${formatTime(scanStatus.last_finished_at)}` : '未扫描'}
+              {isScanning ? t('common.scanning') : scanStatus.last_finished_at ? t('analytics.last_scan', { time: formatTime(scanStatus.last_finished_at) }) : t('analytics.not_scanned')}
             </span>
           )}
           <Button variant="outline" onClick={handleScan} disabled={isScanning || isLoading} className="flex-shrink-0">
             <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
-            {isScanning ? '扫描中' : '扫描 Agent 日志'}
+            {isScanning ? t('common.scanning') : t('analytics.scan_agents')}
           </Button>
           <Button variant="ghost" size="icon" onClick={refresh} disabled={isLoading} className="flex-shrink-0">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -278,13 +280,13 @@ export default function AnalyticsPage() {
           onClick={() => setActiveView('logs')}
           className={`px-3 py-1.5 text-sm transition-colors ${activeView === 'logs' ? 'bg-foreground text-background' : 'bg-card text-muted-foreground hover:text-foreground'}`}
         >
-          日志总览
+          {t('analytics.tab_log_overview')}
         </button>
         <button
           onClick={() => setActiveView('skills')}
           className={`px-3 py-1.5 text-sm transition-colors ${activeView === 'skills' ? 'bg-foreground text-background' : 'bg-card text-muted-foreground hover:text-foreground'}`}
         >
-          Skill 资产分析
+          {t('analytics.tab_skill_analysis')}
         </button>
       </div>
 
@@ -298,12 +300,12 @@ export default function AnalyticsPage() {
       {/* 资源统计卡片 */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { key: 'agents', label: 'Agent 客户端数' },
-          { key: 'skills', label: 'Skills 技能数' },
-          { key: 'mcp_servers', label: 'MCP 服务数' },
-          { key: 'memory_sources', label: '本地记忆源' },
-          { key: 'knowledge_bases', label: '知识库关联' },
-          { key: 'projects', label: '绑定项目数' }
+          { key: 'agents', label: t('analytics.stat_agents') },
+          { key: 'skills', label: t('analytics.stat_skills') },
+          { key: 'mcp_servers', label: t('analytics.stat_mcp') },
+          { key: 'memory_sources', label: t('analytics.stat_memory') },
+          { key: 'knowledge_bases', label: t('analytics.stat_knowledge') },
+          { key: 'projects', label: t('analytics.stat_projects') }
         ].map(item => (
           <div key={item.key} className="border border-border bg-card rounded-lg p-4 shadow-sm hover:border-primary/30 transition-colors">
             <div className="text-xs font-medium text-muted-foreground">{item.label}</div>
@@ -317,22 +319,22 @@ export default function AnalyticsPage() {
       {/* 排行榜网格 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <VisualMetricList 
-          title="Agent 客户端排行" 
+          title={t('analytics.ranking_agents')}
           items={overview?.usage_by_agent_client ?? []} 
           icon={<User className="h-4 w-4 text-primary" />}
         />
         <VisualMetricList 
-          title="Skill 使用排行" 
+          title={t('analytics.ranking_skills')}
           items={overview?.usage_by_skill ?? []} 
           icon={<BookOpen className="h-4 w-4 text-primary" />}
         />
         <VisualMetricList 
-          title="MCP Server 使用排行" 
+          title={t('analytics.ranking_mcp_servers')}
           items={overview?.usage_by_mcp_server ?? []} 
           icon={<Cpu className="h-4 w-4 text-primary" />}
         />
         <VisualMetricList 
-          title="MCP Tool 调用排行" 
+          title={t('analytics.ranking_mcp_tools')}
           items={overview?.usage_by_mcp_tool ?? []} 
           icon={<ListOrdered className="h-4 w-4 text-primary" />}
         />
@@ -342,12 +344,12 @@ export default function AnalyticsPage() {
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <TrendingUp className="h-4 w-4 text-primary" />
-          可观测使用频次趋势 (日志推断)
+          {t('analytics.trend_title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <TrendTimeline title="最近 7 天趋势" items={overview?.trends.week ?? []} />
-          <TrendTimeline title="最近 30 天趋势" items={overview?.trends.month ?? []} />
-          <TrendTimeline title="历史以来趋势" items={overview?.trends.year ?? []} />
+          <TrendTimeline title={t('analytics.trend_7d')} items={overview?.trends.week ?? []} />
+          <TrendTimeline title={t('analytics.trend_30d')} items={overview?.trends.month ?? []} />
+          <TrendTimeline title={t('analytics.trend_all')} items={overview?.trends.year ?? []} />
         </div>
       </section>
 
@@ -361,7 +363,7 @@ export default function AnalyticsPage() {
         <MatrixTable 
           cells={overview?.mcp_by_agent_matrix ?? []} 
           agentLabel="Agent" 
-          resourceLabel="MCP 资源" 
+          resourceLabel={t('analytics.mcp_resource')}
         />
       </section>
 
@@ -369,19 +371,19 @@ export default function AnalyticsPage() {
       <section className="border border-border bg-card rounded-lg shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-muted/20">
           <BarChart3 className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">最近日志推断使用事件 (高/中置信度)</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t('analytics.recent_events_title')}</h2>
         </div>
         <div className="overflow-auto max-h-[350px]">
           {!overview || overview.recent_events.length === 0 ? (
-            <div className="px-4 py-8 text-sm text-muted-foreground text-center">暂无推断事件。</div>
+            <div className="px-4 py-8 text-sm text-muted-foreground text-center">{t('analytics.no_events')}</div>
           ) : (
             <table className="w-full text-xs text-left border-collapse">
               <thead>
                 <tr className="border-b border-border bg-muted/40 sticky top-0 z-10">
-                  <th className="p-3 font-semibold text-foreground">资源类型</th>
-                  <th className="p-3 font-semibold text-foreground">动作行为</th>
-                  <th className="p-3 font-semibold text-foreground">Agent 客户端</th>
-                  <th className="p-3 font-semibold text-foreground">日志推断时间</th>
+                  <th className="p-3 font-semibold text-foreground">{t('analytics.col_resource_type')}</th>
+                  <th className="p-3 font-semibold text-foreground">{t('analytics.col_action')}</th>
+                  <th className="p-3 font-semibold text-foreground">{t('analytics.col_agent')}</th>
+                  <th className="p-3 font-semibold text-foreground">{t('analytics.col_time')}</th>
                 </tr>
               </thead>
               <tbody>

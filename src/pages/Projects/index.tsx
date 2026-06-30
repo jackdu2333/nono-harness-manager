@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FolderOpen, Link2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,11 +23,11 @@ interface BindableResource {
   type: string;
 }
 
-function formatTime(value?: string | null) {
-  return value ? new Date(value).toLocaleString() : '未记录';
-}
-
 export default function ProjectsPage() {
+  const { t } = useTranslation();
+  const formatTime = (value?: string | null) => {
+    return value ? new Date(value).toLocaleString() : t('common.not_recorded');
+  };
   const [projects, setProjects] = useState<AssetOverview[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bindings, setBindings] = useState<ProjectBinding[]>([]);
@@ -136,11 +137,11 @@ export default function ProjectsPage() {
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">按项目组织 Agent、Skills、MCP、Memory 与 Knowledge。</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('projects.description')}</p>
         </div>
         <Button variant="outline" onClick={refresh} disabled={isLoading}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          刷新
+          {t('common.refresh')}
         </Button>
       </div>
 
@@ -151,17 +152,17 @@ export default function ProjectsPage() {
       )}
 
       <section className="mb-5 grid grid-cols-[220px_1fr_1fr_auto] gap-3">
-        <Input value={name} onChange={event => setName(event.target.value)} placeholder="项目名称" />
-        <Input value={path} onChange={event => setPath(event.target.value)} placeholder="代码仓库或项目目录" />
-        <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="项目说明" />
-        <Button onClick={createProject} disabled={isLoading || !name.trim()}>添加项目</Button>
+        <Input value={name} onChange={event => setName(event.target.value)} placeholder={t('projects.name_placeholder')} />
+        <Input value={path} onChange={event => setPath(event.target.value)} placeholder={t('projects.path_placeholder')} />
+        <Input value={description} onChange={event => setDescription(event.target.value)} placeholder={t('projects.desc_placeholder')} />
+        <Button onClick={createProject} disabled={isLoading || !name.trim()}>{t('projects.add_project')}</Button>
       </section>
 
       <div className="grid grid-cols-[360px_1fr] gap-5">
         <section className="min-h-[520px] border border-border bg-card">
-          <div className="border-b border-border px-4 py-3 text-sm font-semibold">项目</div>
+          <div className="border-b border-border px-4 py-3 text-sm font-semibold">{t('projects.list_title')}</div>
           {projects.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">尚未添加项目。</div>
+            <div className="px-4 py-6 text-sm text-muted-foreground">{t('projects.no_projects')}</div>
           ) : (
             projects.map(project => (
               <button
@@ -172,8 +173,8 @@ export default function ProjectsPage() {
                 }`}
               >
                 <div className="truncate text-sm font-medium text-foreground">{project.name}</div>
-                <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{project.path ?? '未绑定路径'}</div>
-                <div className="mt-2 text-xs text-muted-foreground">更新：{formatTime(project.updated_at)}</div>
+                <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{project.path ?? t('projects.no_binding')}</div>
+                <div className="mt-2 text-xs text-muted-foreground">{t('projects.updated', { time: formatTime(project.updated_at) })}</div>
               </button>
             ))
           )}
@@ -182,8 +183,8 @@ export default function ProjectsPage() {
         <section className="min-h-[520px] border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <div className="text-sm font-semibold text-foreground">{selected?.name ?? '项目资源'}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{selected?.description ?? '选择项目后绑定资源。'}</div>
+              <div className="text-sm font-semibold text-foreground">{selected?.name ?? t('projects.resources')}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{selected?.description ?? t('projects.resources_hint')}</div>
             </div>
             {selected?.path && (
               <Button variant="outline" size="sm" onClick={() => openLocalPath(selected.path!)}>
@@ -216,12 +217,12 @@ export default function ProjectsPage() {
             </select>
             <Button onClick={bindResource} disabled={!selectedId || !resourceId}>
               <Link2 className="mr-2 h-4 w-4" />
-              绑定
+              {t('projects.bind')}
             </Button>
           </div>
 
           {bindings.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">当前项目尚未绑定资源。</div>
+            <div className="px-4 py-6 text-sm text-muted-foreground">{t('projects.no_binding_desc')}</div>
           ) : (
             <div className="max-h-[560px] overflow-auto">
               {bindings.map(binding => (

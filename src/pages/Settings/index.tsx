@@ -21,9 +21,9 @@ import {
   type TestConnectionResult,
 } from '@/features/ai/api';
 
-// nav key -> 显示标签
-const NAV_LABELS: Record<NavItemKey, string> = {
-  dashboard: 'AI 工作台',
+// nav key -> i18n key（dashboard 走 i18n，其余保持英文品牌名）
+const NAV_LABEL_KEYS: Record<NavItemKey, string> = {
+  dashboard: 'nav.dashboard',
   analytics: 'Analytics',
   health: 'Health Check',
   skills: 'Skills',
@@ -43,7 +43,7 @@ const NAV_GROUPS: { label: string; keys: NavItemKey[] }[] = [
 ];
 
 export default function SettingsPage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selected, setSelected] = useState<Set<NavItemKey>>(new Set(DEFAULT_VISIBLE));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -198,7 +198,7 @@ export default function SettingsPage() {
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-medium text-foreground">Language / 语言</h3>
+                <h3 className="text-base font-medium text-foreground">{t('settings.language')}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   Choose your preferred interface language
                 </p>
@@ -212,28 +212,28 @@ export default function SettingsPage() {
           {/* Navigation visibility */}
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="mb-4">
-              <h3 className="text-base font-medium text-foreground">侧边栏菜单显示</h3>
+              <h3 className="text-base font-medium text-foreground">{t('settings.nav_visibility')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                选择左侧导航栏中要显示的页面。隐藏页面不会删除数据，也不会禁用功能，只是不在左侧菜单中显示。
+                {t('settings.nav_visibility_desc')}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                已显示 {selected.size} / {NAV_ITEM_KEYS.length} 个页面（Settings 永远显示）
+                {t('settings.nav_count', { shown: selected.size, total: NAV_ITEM_KEYS.length })}
               </p>
             </div>
 
             {/* Preset buttons */}
             <div className="flex flex-wrap gap-2 mb-5">
               <Button variant="outline" size="sm" onClick={() => applyPreset(PRESETS.all)}>
-                全部显示
+                {t('settings.show_all')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => applyPreset(PRESETS.skills_only)}>
-                只显示 Skills
+                {t('settings.show_skills_only')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => applyPreset(PRESETS.core)}>
-                核心资产模式
+                {t('settings.core_mode')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => applyPreset(PRESETS.advanced)}>
-                高级模式
+                {t('settings.advanced_mode')}
               </Button>
             </div>
 
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                           disabled={loading}
                           className="w-4 h-4 rounded border-border"
                         />
-                        <span className="text-sm text-foreground">{NAV_LABELS[key]}</span>
+                        <span className="text-sm text-foreground">{NAV_LABEL_KEYS[key].includes('.') ? t(NAV_LABEL_KEYS[key]) : NAV_LABEL_KEYS[key]}</span>
                       </label>
                     ))}
                   </div>
@@ -267,16 +267,16 @@ export default function SettingsPage() {
 
             {/* Validation message */}
             {selected.size === 0 && (
-              <p className="text-sm text-destructive mt-3">至少保留一个页面入口。</p>
+              <p className="text-sm text-destructive mt-3">{t('settings.keep_one')}</p>
             )}
 
             {/* Action buttons */}
             <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border">
               <Button onClick={handleSave} disabled={!canSave}>
-                {saving ? '保存中...' : '保存'}
+                {saving ? t('common.saving') : t('common.save')}
               </Button>
               <Button variant="ghost" size="sm" onClick={handleRestoreDefault} disabled={saving}>
-                恢复默认
+                {t('settings.restore_default')}
               </Button>
             </div>
           </div>
@@ -286,13 +286,13 @@ export default function SettingsPage() {
             <div className="mb-4">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
-                <h3 className="text-base font-medium text-foreground">AI 助手设置</h3>
+                <h3 className="text-base font-medium text-foreground">{t('settings.ai_title')}</h3>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">
                   Experimental
                 </span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                配置 AI 提供商以启用工作台智能分析功能。API Key 不会明文存储或展示。
+                {t('settings.ai_desc')}
               </p>
             </div>
 
@@ -305,12 +305,12 @@ export default function SettingsPage() {
                   onChange={(e) => setAiEnabled(e.target.checked)}
                   className="w-4 h-4 rounded border-border"
                 />
-                <span className="text-sm text-foreground">启用 AI 助手</span>
+                <span className="text-sm text-foreground">{t('settings.enable_ai')}</span>
               </label>
 
               {/* Provider */}
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">提供商</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('settings.provider')}</label>
                 <select
                   value={aiProvider}
                   onChange={(e) => {
@@ -338,7 +338,7 @@ export default function SettingsPage() {
 
               {/* Model */}
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">模型</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('settings.model')}</label>
                 <Input
                   value={aiModel}
                   onChange={(e) => { setAiModel(e.target.value); setAiTestResult(null); }}
@@ -352,7 +352,7 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
                   API Key
                   {aiSettings?.has_api_key && (
-                    <span className="ml-2 text-emerald-600 dark:text-emerald-400">✓ 已设置</span>
+                    <span className="ml-2 text-emerald-600 dark:text-emerald-400">{t('settings.api_key_set')}</span>
                   )}
                 </label>
                 <div className="flex gap-2">
@@ -361,7 +361,7 @@ export default function SettingsPage() {
                       type={aiShowKey ? 'text' : 'password'}
                       value={aiApiKey}
                       onChange={(e) => setAiApiKey(e.target.value)}
-                      placeholder={aiSettings?.has_api_key ? '已设置，留空保持不变' : '输入 API Key'}
+                      placeholder={aiSettings?.has_api_key ? t('settings.api_key_placeholder_set') : t('settings.api_key_placeholder_unset')}
                       className="text-sm pr-9"
                     />
                     <button
@@ -380,7 +380,7 @@ export default function SettingsPage() {
                       className="gap-1 text-destructive hover:text-destructive"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      清除
+                      {t('settings.clear')}
                     </Button>
                   )}
                 </div>
@@ -396,7 +396,7 @@ export default function SettingsPage() {
                   className="gap-1.5"
                 >
                   {aiTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                  测试连接
+                  {t('settings.test_connection')}
                 </Button>
                 {aiTestResult && (
                   <span className={`flex items-center gap-1 text-xs ${aiTestResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -409,7 +409,7 @@ export default function SettingsPage() {
               {/* Save */}
               <div className="pt-3 border-t border-border">
                 <Button onClick={handleAiSave} disabled={aiSaving}>
-                  {aiSaving ? '保存中...' : '保存 AI 设置'}
+                  {aiSaving ? t('common.saving') : t('settings.save_ai')}
                 </Button>
               </div>
             </div>

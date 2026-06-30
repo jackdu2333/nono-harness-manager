@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   RotateCcw,
   ShieldAlert,
@@ -31,15 +32,26 @@ import type { IntelligenceProposal } from '@/features/proposals/types';
 
 const SECTION_PREVIEW_LIMIT = 10;
 
-const creatorLabels: Record<string, string> = {
-  built_in_ai: '内置 AI',
-  codex: 'Codex',
-  mcp: 'MCP',
-  manual: '手动',
-  rule_engine: '规则引擎',
-  user_rewrite: '手动重写',
-  built_in_ai_rewrite: '内置 AI 重写',
-};
+function getCreatorLabel(t: (key: string, opts?: Record<string, unknown>) => string, key?: string | null): string {
+  switch (key) {
+    case 'built_in_ai':
+      return t('proposals.source_builtin_ai');
+    case 'codex':
+      return 'Codex';
+    case 'mcp':
+      return 'MCP';
+    case 'manual':
+      return t('proposals.source_manual');
+    case 'rule_engine':
+      return t('proposals.source_rule_engine');
+    case 'user_rewrite':
+      return t('proposals.source_manual_rewrite');
+    case 'built_in_ai_rewrite':
+      return t('proposals.source_ai_rewrite');
+    default:
+      return key || t('common.unknown');
+  }
+}
 
 function parseReasons(raw?: string | null): string[] {
   if (!raw) return [];
@@ -51,8 +63,8 @@ function parseReasons(raw?: string | null): string[] {
   }
 }
 
-function formatTime(value?: string | null) {
-  if (!value) return '未记录';
+function formatTime(t: (key: string, opts?: Record<string, unknown>) => string, value?: string | null) {
+  if (!value) return t('common.not_recorded');
   return new Date(value).toLocaleString();
 }
 
@@ -117,44 +129,44 @@ function getBlockedGroup(proposal: IntelligenceProposal): 'repairable' | 'manual
   }
 }
 
-const getRiskBadge = (level?: string | null) => {
+const getRiskBadge = (t: (key: string, opts?: Record<string, unknown>) => string, level?: string | null) => {
   const lvl = level || 'low';
   switch (lvl) {
     case 'high':
     case 'blocked':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-500/10 text-red-700 dark:text-red-400">high</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-destructive/10 text-destructive">high</span>;
     case 'medium':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">medium</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-warning/10 text-warning">medium</span>;
     case 'low':
     default:
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-500/10 text-green-700 dark:text-green-400">low</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-success/10 text-success">low</span>;
   }
 };
 
-const getStatusBadge = (status?: string | null) => {
+const getStatusBadge = (t: (key: string, opts?: Record<string, unknown>) => string, status?: string | null) => {
   const st = status || 'unknown';
   switch (st) {
     case 'applied':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-500/10 text-green-700 dark:text-green-400">已应用</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-success/10 text-success">{t('proposals.status_applied')}</span>;
     case 'pending':
     case 'pending_review':
     case 'pending_manual_review':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">待确认</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-warning/10 text-warning">{t('proposals.status_pending_review')}</span>;
     case 'blocked':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-500/10 text-red-700 dark:text-red-400">已拦截</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-destructive/10 text-destructive">{t('proposals.status_blocked')}</span>;
     case 'rejected':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-400">已拒绝</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-muted text-muted-foreground">{t('proposals.status_rejected')}</span>;
     case 'rolled_back':
-      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-400">已回滚</span>;
+      return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-400">{t('proposals.status_rolled_back')}</span>;
     default:
       return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-muted text-muted-foreground">{st}</span>;
   }
 };
 
-function ProposalDetails({ proposal }: { proposal: IntelligenceProposal }) {
+function ProposalDetails({ t, proposal }: { t: (key: string, opts?: Record<string, unknown>) => string; proposal: IntelligenceProposal }) {
   return (
     <details className="mt-2 text-xs text-muted-foreground">
-      <summary className="cursor-pointer text-foreground">查看详情</summary>
+      <summary className="cursor-pointer text-foreground">{t('proposals.view_detail')}</summary>
       <pre className="mt-2 max-h-56 overflow-auto rounded border border-border bg-muted/40 p-3 whitespace-pre-wrap">
         {proposal.proposed_changes}
       </pre>
@@ -163,9 +175,11 @@ function ProposalDetails({ proposal }: { proposal: IntelligenceProposal }) {
 }
 
 function ProposalRow({
+  t,
   proposal,
   actions,
 }: {
+  t: (key: string, opts?: Record<string, unknown>) => string;
   proposal: IntelligenceProposal;
   actions?: ReactNode;
 }) {
@@ -182,31 +196,31 @@ function ProposalRow({
           {proposal.resource_type} / {proposal.resource_id}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
-          来源：{(proposal.created_by && creatorLabels[proposal.created_by]) || proposal.created_by || '未知来源'}
+          {t('proposals.source_label', { source: getCreatorLabel(t, proposal.created_by) })}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">{proposal.proposal_type}</div>
         {proposal.linked_from && (
-          <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-            已由安全重写创建 (原ID: {proposal.linked_from.slice(0, 8)}...)
+          <div className="mt-1 text-xs text-success">
+            {t('proposals.safety_rewrite_created', { id: proposal.linked_from.slice(0, 8) })}
           </div>
         )}
-        <ProposalDetails proposal={proposal} />
+        <ProposalDetails t={t} proposal={proposal} />
       </div>
       <div className="text-sm text-muted-foreground space-y-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs">风险:</span> {getRiskBadge(proposal.risk_level)}
+          <span className="text-xs">{t('proposals.risk_label')}</span> {getRiskBadge(t, proposal.risk_level)}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs">状态:</span> {getStatusBadge(proposal.status)}
+          <span className="text-xs">{t('proposals.status_label')}</span> {getStatusBadge(t, proposal.status)}
         </div>
       </div>
       <div className="text-sm text-muted-foreground">
-        <div>创建：{formatTime(proposal.created_at)}</div>
-        <div className="mt-1">应用：{formatTime(proposal.applied_at)}</div>
+        <div>{t('proposals.created', { time: formatTime(t, proposal.created_at) })}</div>
+        <div className="mt-1">{t('proposals.applied', { time: formatTime(t, proposal.applied_at) })}</div>
         {reasons.length > 0 && (
           <ul className="mt-2 space-y-1">
             {reasons.map(reason => (
-              <li key={reason} className="text-red-500 dark:text-red-400">- {reason}</li>
+              <li key={reason} className="text-destructive">- {reason}</li>
             ))}
           </ul>
         )}
@@ -281,6 +295,7 @@ function ProposalSection({
 }
 
 export default function ProposalsPage() {
+  const { t } = useTranslation();
   const [proposals, setProposals] = useState<IntelligenceProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -444,21 +459,21 @@ export default function ProposalsPage() {
   const handleCreateSafeVersion = async (proposalId: string) => {
     await runAction(async () => {
       await createSafeRewriteProposal(proposalId);
-      setSuccessMsg('已创建安全版本 proposal，请在“待确认”中查看。');
+      setSuccessMsg(t('proposals.safety_version_created'));
     });
   };
 
   const handleAcknowledge = async (proposalId: string) => {
     await runAction(async () => {
       await acknowledgeIntelligenceProposal(proposalId);
-      setSuccessMsg('已将该 proposal 标记为已了解。');
+      setSuccessMsg(t('proposals.acknowledged'));
     });
   };
 
   const applyAllPending = () =>
     setConfirmDialog({
-      title: '批量应用',
-      description: `即将应用 ${applyablePendingReview.length} 条可应用 proposal。Agent 类型 proposal、已拦截 proposal、高风险 proposal 不会被直接应用。所有应用操作会记录审计日志，可在支持回滚的情况下回滚。是否继续？`,
+      title: t('proposals.batch_apply'),
+      description: t('proposals.batch_apply_desc', { count: applyablePendingReview.length }),
       action: async () => {
         for (const proposal of applyablePendingReview) {
           await applyIntelligenceProposal(proposal.id);
@@ -468,8 +483,8 @@ export default function ProposalsPage() {
 
   const rejectAllPending = () =>
     setConfirmDialog({
-      title: '批量拒绝',
-      description: `即将拒绝 ${pendingReview.length} 条待确认 proposal。该操作不会修改本地资源，但会将这些 proposal 标记为 rejected。是否继续？`,
+      title: t('proposals.batch_reject'),
+      description: t('proposals.batch_reject_desc', { count: pendingReview.length }),
       action: async () => {
         for (const proposal of pendingReview) {
           await rejectIntelligenceProposal(proposal.id);
@@ -483,11 +498,11 @@ export default function ProposalsPage() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Proposals</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Trust Policy 只判断本地安全边界，内容质量由创建 proposal 的 AI 负责。
+            {t('proposals.trust_policy_note')}
           </p>
         </div>
         <Button variant="outline" onClick={refresh} disabled={isLoading}>
-          刷新
+          {t('common.refresh')}
         </Button>
       </div>
 
@@ -498,7 +513,7 @@ export default function ProposalsPage() {
       )}
 
       {successMsg && (
-        <div className="mb-4 rounded border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
+        <div className="mb-4 rounded border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
           {successMsg}
         </div>
       )}
@@ -506,14 +521,14 @@ export default function ProposalsPage() {
       {/* 1. 待确认 Section */}
       <ProposalSection
         id="pending"
-        title="待确认"
-        icon={<UserCheck className="h-4.5 w-4.5 text-amber-600" />}
+        title={t('proposals.pending_title')}
+        icon={<UserCheck className="h-4.5 w-4.5 text-warning" />}
         count={pendingReview.length}
         summary={
           <div className="flex gap-2">
-            <span>{applyablePendingReview.length} 条可应用</span>
+            <span>{t('proposals.pending_applyable', { count: applyablePendingReview.length })}</span>
             <span>·</span>
-            <span>{pendingReview.length - applyablePendingReview.length} 条仅建议</span>
+            <span>{t('proposals.pending_suggest_only', { count: pendingReview.length - applyablePendingReview.length })}</span>
           </div>
         }
         collapsed={collapsedSections.pending ?? false}
@@ -526,7 +541,7 @@ export default function ProposalsPage() {
               onClick={applyAllPending}
               disabled={applyablePendingReview.length === 0}
             >
-              批量应用
+              {t('proposals.batch_apply')}
             </Button>
             <Button
               variant="outline"
@@ -534,16 +549,17 @@ export default function ProposalsPage() {
               onClick={rejectAllPending}
               disabled={pendingReview.length === 0}
             >
-              批量拒绝
+              {t('proposals.batch_reject')}
             </Button>
           </>
         }
-        emptyText="暂无需要确认的 proposal。外部 AI 或内置 AI 创建的建议会出现在这里。"
+        emptyText={t('proposals.pending_empty')}
       >
         <div className="divide-y divide-border">
           {visiblePending.map(proposal => (
             <ProposalRow
               key={proposal.id}
+              t={t}
               proposal={proposal}
               actions={
                 <>
@@ -553,11 +569,11 @@ export default function ProposalsPage() {
                       size="sm"
                       onClick={() => runAction(() => applyIntelligenceProposal(proposal.id))}
                     >
-                      应用
+                      {t('proposals.apply')}
                     </Button>
                   ) : (
                     <span className="rounded border border-border px-2 py-1 text-xs text-muted-foreground">
-                      仅建议
+                      {t('proposals.suggest_only')}
                     </span>
                   )}
                   <Button
@@ -566,7 +582,7 @@ export default function ProposalsPage() {
                     onClick={() => runAction(() => rejectIntelligenceProposal(proposal.id))}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    拒绝
+                    {t('proposals.reject')}
                   </Button>
                 </>
               }
@@ -579,7 +595,7 @@ export default function ProposalsPage() {
               onClick={() => setExpandedAllSections(prev => ({ ...prev, pending: !prev.pending }))}
               className="text-xs font-semibold text-primary hover:underline"
             >
-              {expandedAllSections.pending ? '收起到前 10 条' : `显示全部 ${sortedPendingReview.length} 条`}
+              {expandedAllSections.pending ? t('proposals.collapse_to_10') : t('proposals.show_more', { count: sortedPendingReview.length })}
             </button>
           </div>
         )}
@@ -588,16 +604,16 @@ export default function ProposalsPage() {
       {/* 2. 已拦截 Section */}
       <ProposalSection
         id="blocked"
-        title="已拦截"
+        title={t('proposals.blocked_title')}
         icon={<ShieldAlert className="h-4.5 w-4.5 text-destructive" />}
         count={blocked.length}
         summary={
           <div className="flex gap-2 items-center">
-            <span>{allBlocked.length} 条被 Trust Policy 拦截</span>
+            <span>{t('proposals.blocked_count', { count: allBlocked.length })}</span>
             <span>·</span>
-            <span>{repairableBlockedCount} 条可生成安全版本</span>
+            <span>{t('proposals.blocked_repairable', { count: repairableBlockedCount })}</span>
             <span>·</span>
-            <span>{acknowledgedBlockedCount} 条已了解</span>
+            <span>{t('proposals.blocked_acknowledged', { count: acknowledgedBlockedCount })}</span>
           </div>
         }
         collapsed={collapsedSections.blocked ?? (blocked.length === 0)}
@@ -610,13 +626,13 @@ export default function ProposalsPage() {
               onChange={e => setShowAcknowledged(e.target.checked)}
               className="rounded border-border"
             />
-            显示已了解
+            {t('proposals.show_acknowledged')}
           </label>
         }
-        emptyText="暂无被 Trust Policy 拦截的高风险 proposal。"
+        emptyText={t('proposals.blocked_empty')}
       >
-        <div className="p-4 bg-red-500/5 border-b border-border text-xs text-muted-foreground">
-          这些 proposal 被 Trust Policy 拦截，表示它们包含越权、危险字段或不允许自动执行的变更。你可以查看原因、拒绝记录，或生成一个移除危险字段后的安全版本。
+        <div className="p-4 bg-destructive/5 border-b border-border text-xs text-muted-foreground">
+          {t('proposals.blocked_desc')}
         </div>
 
         <div className="divide-y divide-border">
@@ -633,40 +649,40 @@ export default function ProposalsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-foreground">{displayName}</span>
-                      {getRiskBadge(proposal.risk_level)}
-                      {getStatusBadge(proposal.status)}
+                      {getRiskBadge(t, proposal.risk_level)}
+                      {getStatusBadge(t, proposal.status)}
                       {isAcknowledge && (
                         <span className="px-1.5 py-0.5 text-[10px] bg-muted text-muted-foreground rounded">
-                          已了解
+                          {t('proposals.acknowledge')}
                         </span>
                       )}
                       {group === 'repairable' && (
-                        <span className="px-1.5 py-0.5 text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 rounded">
-                          可生成安全版本
+                        <span className="px-1.5 py-0.5 text-[10px] bg-success/10 text-success rounded">
+                          {t('proposals.gen_safe_version')}
                         </span>
                       )}
                       {group === 'manual' && (
-                        <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded">
-                          需要人工确认，不能自动转安全版本
+                        <span className="px-1.5 py-0.5 text-[10px] bg-warning/10 text-warning rounded">
+                          {t('proposals.manual_confirm')}
                         </span>
                       )}
                       {group === 'high_risk' && (
-                        <span className="px-1.5 py-0.5 text-[10px] bg-red-500/10 text-red-700 dark:text-red-400 rounded">
-                          高风险，建议拒绝
+                        <span className="px-1.5 py-0.5 text-[10px] bg-destructive/10 text-destructive rounded">
+                          {t('proposals.high_risk_reject')}
                         </span>
                       )}
                     </div>
 
                     <div className="mt-2 text-xs text-muted-foreground space-y-1">
                       <div>
-                        资源：<span className="text-foreground">{proposal.resource_type} / {proposal.resource_id}</span>
+                        {t('proposals.resource_label', { resource: `${proposal.resource_type} / ${proposal.resource_id}` })}
                       </div>
                       <div>
-                        来源：<span className="text-foreground">{(proposal.created_by && creatorLabels[proposal.created_by]) || proposal.created_by || '未知来源'}</span>
+                        {t('proposals.source_label', { source: getCreatorLabel(t, proposal.created_by) })}
                       </div>
                       {reasons.length > 0 && (
-                        <div className="text-red-500 dark:text-red-400 font-medium">
-                          拦截原因：{reasons[0]}
+                        <div className="text-destructive font-medium">
+                          {t('proposals.block_reason', { reason: reasons[0] })}
                         </div>
                       )}
                     </div>
@@ -678,7 +694,7 @@ export default function ProposalsPage() {
                       size="sm"
                       onClick={() => setExpandedReasons(prev => ({ ...prev, [proposal.id]: !prev[proposal.id] }))}
                     >
-                      {expandedReasons[proposal.id] ? '隐藏原因' : '查看原因'}
+                      {expandedReasons[proposal.id] ? t('proposals.hide_reason') : t('proposals.view_reason')}
                     </Button>
 
                     <Button
@@ -686,9 +702,9 @@ export default function ProposalsPage() {
                       size="sm"
                       disabled={!repairable}
                       onClick={() => handleCreateSafeVersion(proposal.id)}
-                      title={!repairable ? "该 proposal 只包含高风险变更，无法生成安全版本。" : ""}
+                      title={!repairable ? t('proposals.no_safe_version') : ""}
                     >
-                      生成安全版本
+                      {t('proposals.gen_safe')}
                     </Button>
 
                     <Button
@@ -696,7 +712,7 @@ export default function ProposalsPage() {
                       size="sm"
                       onClick={() => runAction(() => rejectIntelligenceProposal(proposal.id))}
                     >
-                      拒绝
+                      {t('proposals.reject')}
                     </Button>
 
                     <Button
@@ -705,61 +721,61 @@ export default function ProposalsPage() {
                       disabled={isAcknowledge}
                       onClick={() => handleAcknowledge(proposal.id)}
                     >
-                      已了解
+                      {t('proposals.acknowledge')}
                     </Button>
 
                     <div className="relative group inline-block">
                       <Button variant="outline" size="sm" disabled={true}>
-                        让 AI 分析
+                        {t('proposals.let_ai_analyze')}
                       </Button>
                       <div className="absolute z-10 hidden group-hover:block bg-popover text-popover-foreground text-[10px] rounded p-2 border border-border shadow-md -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        内置 AI Tool Runtime 完成后启用。
+                        {t('proposals.ai_runtime_note')}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {expandedReasons[proposal.id] && (
-                  <div className="mt-3 p-4 border border-red-200 bg-red-50/30 rounded text-xs space-y-3 dark:border-red-900/50 dark:bg-red-950/20">
+                  <div className="mt-3 p-4 border border-destructive/30 bg-destructive/5 rounded text-xs space-y-3">
                     <div>
-                      <div className="font-semibold text-red-700 dark:text-red-400 mb-1">
-                        违反 Trust Policy 的所有安全拦截原因：
+                      <div className="font-semibold text-destructive mb-1">
+                        {t('proposals.all_block_reasons')}
                       </div>
-                      <ul className="list-disc list-inside space-y-1 text-red-600 dark:text-red-300">
+                      <ul className="list-disc list-inside space-y-1 text-destructive">
                         {reasons.map((r, i) => (
                           <li key={i}>{r}</li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 border-t border-red-200/50 pt-2 text-muted-foreground">
+                    <div className="grid grid-cols-2 gap-4 border-t border-destructive/30 pt-2 text-muted-foreground">
                       <div>
-                        <span className="font-medium text-foreground">变更类型：</span>
+                        <span className="font-medium text-foreground">{t('proposals.change_type')}</span>
                         {proposal.proposal_type}
                       </div>
                       <div>
-                        <span className="font-medium text-foreground">资源类型：</span>
+                        <span className="font-medium text-foreground">{t('proposals.resource_type')}</span>
                         {proposal.resource_type}
                       </div>
                       <div>
-                        <span className="font-medium text-foreground">创建来源：</span>
-                        {(proposal.created_by && creatorLabels[proposal.created_by]) || proposal.created_by || '未知'}
+                        <span className="font-medium text-foreground">{t('proposals.create_source')}</span>
+                        {getCreatorLabel(t, proposal.created_by)}
                       </div>
                       <div>
-                        <span className="font-medium text-foreground">创建时间：</span>
-                        {formatTime(proposal.created_at)}
+                        <span className="font-medium text-foreground">{t('proposals.create_time')}</span>
+                        {formatTime(t, proposal.created_at)}
                       </div>
                     </div>
 
                     {proposal.linked_from && (
-                      <div className="text-emerald-600 dark:text-emerald-400">
-                        <span>🔗 关联自拦截 Proposal ID: </span>
-                        <code className="text-[10px] bg-emerald-500/10 px-1 rounded">{proposal.linked_from}</code>
+                      <div className="text-success">
+                        <span>{t('proposals.linked_from')} </span>
+                        <code className="text-[10px] bg-success/10 px-1 rounded">{proposal.linked_from}</code>
                       </div>
                     )}
 
-                    <div className="border-t border-red-200/50 pt-2">
-                      <div className="font-medium text-foreground mb-1">提案变更内容 (proposed_changes)：</div>
+                    <div className="border-t border-destructive/30 pt-2">
+                      <div className="font-medium text-foreground mb-1">{t('proposals.proposed_changes')}</div>
                       <pre className="p-2 bg-muted rounded border overflow-x-auto text-[10px] text-foreground max-h-48 whitespace-pre-wrap">
                         {proposal.proposed_changes}
                       </pre>
@@ -777,7 +793,7 @@ export default function ProposalsPage() {
               onClick={() => setExpandedAllSections(prev => ({ ...prev, blocked: !prev.blocked }))}
               className="text-xs font-semibold text-primary hover:underline"
             >
-              {expandedAllSections.blocked ? '收起到前 10 条' : `显示全部 ${sortedBlocked.length} 条`}
+              {expandedAllSections.blocked ? t('proposals.collapse_to_10') : t('proposals.show_more', { count: sortedBlocked.length })}
             </button>
           </div>
         )}
@@ -786,24 +802,25 @@ export default function ProposalsPage() {
       {/* 3. 已自动应用 Section */}
       <ProposalSection
         id="autoApplied"
-        title="已自动应用"
-        icon={<ShieldCheck className="h-4.5 w-4.5 text-emerald-600" />}
+        title={t('proposals.auto_applied_title')}
+        icon={<ShieldCheck className="h-4.5 w-4.5 text-success" />}
         count={autoApplied.length}
         summary={
           <div className="flex gap-2">
-            <span>今日 {autoAppliedToday.length} 条</span>
+            <span>{t('proposals.auto_applied_today', { count: autoAppliedToday.length })}</span>
             <span>·</span>
-            <span>历史 {autoApplied.length} 条</span>
+            <span>{t('proposals.auto_applied_history', { count: autoApplied.length })}</span>
           </div>
         }
         collapsed={collapsedSections.autoApplied ?? true}
         onToggle={() => setCollapsedSections(prev => ({ ...prev, autoApplied: !prev.autoApplied }))}
-        emptyText="暂无自动应用记录。低风险且符合 Trust Policy 的 proposal 会自动应用并记录在这里。"
+        emptyText={t('proposals.auto_applied_empty')}
       >
         <div className="divide-y divide-border">
           {visibleAutoApplied.map(proposal => (
             <ProposalRow
               key={proposal.id}
+              t={t}
               proposal={proposal}
               actions={
                 <Button
@@ -812,7 +829,7 @@ export default function ProposalsPage() {
                   onClick={() => runAction(() => rollbackIntelligenceProposal(proposal.id))}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  回滚
+                  {t('proposals.rollback')}
                 </Button>
               }
             />
@@ -824,7 +841,7 @@ export default function ProposalsPage() {
               onClick={() => setExpandedAllSections(prev => ({ ...prev, autoApplied: !prev.autoApplied }))}
               className="text-xs font-semibold text-primary hover:underline"
             >
-              {expandedAllSections.autoApplied ? '收起到前 10 条' : `显示全部 ${sortedAutoApplied.length} 条`}
+              {expandedAllSections.autoApplied ? t('proposals.collapse_to_10') : t('proposals.show_more', { count: sortedAutoApplied.length })}
             </button>
           </div>
         )}
@@ -838,7 +855,7 @@ export default function ProposalsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDialog(null)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => {
@@ -848,7 +865,7 @@ export default function ProposalsPage() {
                 runAction(dialog.action);
               }}
             >
-              确认
+              {t('common.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { RefreshCw, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { listSkills, listSkillSources } from '@/features/skills/api';
@@ -51,36 +52,37 @@ interface DashboardState {
 }
 
 const actionLabels: Record<string, string> = {
-  view_detail: '查看',
-  copy_path: '复制路径',
-  copy_ref: '复制引用',
-  open_dir: '打开目录',
-  edit_description: '编辑描述',
-  set_category: '设置分类',
-  set_status: '设置状态',
-  archive: '归档',
-  delete_index: '移除索引',
-  remove_index: '移除索引',
-  delete_source_file: '删除源文件',
-  move_source_to_trash: '移到废纸篓',
-  toggle_favorite: '切换常用',
-  toggle_needs_review: '切换待整理',
-  toggle_needs_improvement: '切换待进化',
-  update_improvement_note: '更新进化备注',
-  update_review_note: '更新整理备注',
+  view_detail: 'common.view',
+  copy_path: 'common.copy_path',
+  copy_ref: 'Copy Ref',
+  open_dir: 'common.open',
+  edit_description: 'common.edit',
+  set_category: 'common.category',
+  set_status: 'common.status',
+  archive: 'skills.tag_archived',
+  delete_index: 'common.remove',
+  remove_index: 'common.remove',
+  delete_source_file: 'common.delete',
+  move_source_to_trash: 'common.delete',
+  toggle_favorite: 'skills.tag_frequent',
+  toggle_needs_review: 'skills.tag_organize',
+  toggle_needs_improvement: 'skills.tag_evolve',
+  update_improvement_note: 'skills.evolution_notes',
+  update_review_note: 'skills.organize_notes',
 };
 
-function formatTime(value: string) {
+function formatTime(value: string, t: (key: string, opts?: Record<string, unknown>) => string) {
   const date = new Date(value);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  if (diff < 60000) return t('common.just_now');
+  if (diff < 3600000) return t('common.minutes_ago', { n: Math.floor(diff / 60000) });
+  if (diff < 86400000) return t('common.hours_ago', { n: Math.floor(diff / 3600000) });
   return date.toLocaleString();
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [state, setState] = useState<DashboardState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -256,8 +258,8 @@ export default function DashboardPage() {
         : 'update_metadata';
 
       const proposedChanges = suggestion.rule_id === 'skill.missing_description'
-        ? JSON.stringify({ description: '[AI 建议补全描述]' })
-        : JSON.stringify({ category: '[AI 建议设置分类]' });
+        ? JSON.stringify({ description: t('dashboard.ai_suggest_desc') })
+        : JSON.stringify({ category: t('dashboard.ai_suggest_cat') });
 
       let created = 0;
       // Create proposals for up to 10 skills at a time
@@ -287,7 +289,11 @@ export default function DashboardPage() {
         } catch {}
       }
 
-      alert(`已创建 ${created} 个 Proposal${affectedSkills.length > 10 ? `（共 ${affectedSkills.length} 个，本次最多处理 10 个）` : ''}`);
+      alert(
+        affectedSkills.length > 10
+          ? t('dashboard.proposals_created_partial', { created, total: affectedSkills.length })
+          : t('dashboard.proposals_created', { count: created }),
+      );
     },
     [state],
   );
@@ -314,10 +320,10 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              AI 工作台
+              {t('workbench.title')}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              让 Harness 分析本机 AI 资产状态，并给出下一步治理建议。
+              {t('workbench.subtitle')}
             </p>
           </div>
           <Button
@@ -328,7 +334,7 @@ export default function DashboardPage() {
             className="gap-1.5 h-8 text-xs font-semibold"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            刷新
+            {t('common.refresh')}
           </Button>
         </div>
 
@@ -352,7 +358,7 @@ export default function DashboardPage() {
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground p-4">
             <RefreshCw className="w-4 h-4 animate-spin text-primary" />
-            加载中...
+            {t('common.loading')}
           </div>
         ) : (
           <>
@@ -375,30 +381,30 @@ export default function DashboardPage() {
               {/* Analysis Tasks History */}
               <div className="rounded-lg border border-border bg-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2.5">
-                  分析任务历史
+                  {t('workbench.analysis_history')}
                 </h3>
                 {recentTasks.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/50 py-2">暂无历史任务执行记录</p>
+                  <p className="text-[11px] text-muted-foreground/50 py-2">{t('workbench.no_history')}</p>
                 ) : (
                   <div className="space-y-1.5">
                     {recentTasks.map((task) => {
                       const taskLabels: Record<string, string> = {
-                        analyze_skills: '分析 Skills',
-                        check_agents: '检查 Agents',
-                        check_mcp: '检查 MCP',
-                        review_proposals: '待处理 Proposals',
-                        daily_governance_plan: '今日治理计划',
+                        analyze_skills: t('workbench.quick_tasks.analyze_skills'),
+                        check_agents: t('workbench.quick_tasks.check_agents'),
+                        check_mcp: t('workbench.quick_tasks.check_mcp'),
+                        review_proposals: t('workbench.quick_tasks.review_proposals'),
+                        daily_governance_plan: t('workbench.quick_tasks.daily_plan'),
                       };
                       const label = taskLabels[task.task_type] || task.task_type;
                       return (
                         <div key={task.id} className="flex items-center justify-between text-xs py-1 px-1.5 rounded hover:bg-muted/30 transition-colors border border-transparent hover:border-border/30">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-semibold text-foreground truncate">{label}</span>
-                            <span className="text-[10px] text-muted-foreground/50">{formatTime(task.created_at)}</span>
+                            <span className="text-[10px] text-muted-foreground/50">{formatTime(task.created_at, t)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[9px] px-1 bg-green-500/10 text-green-700 dark:text-green-400 rounded font-bold uppercase">
-                              已完成
+                              {t('dashboard.completed')}
                             </span>
                             {task.result_json && (
                               <button
@@ -412,7 +418,7 @@ export default function DashboardPage() {
                                 }}
                                 className="text-primary hover:underline font-semibold"
                               >
-                                查看
+                                {t('common.view')}
                               </button>
                             )}
                           </div>
@@ -429,11 +435,11 @@ export default function DashboardPage() {
               {/* Recent Activity */}
               <div className="rounded-lg border border-border bg-card">
                 <div className="border-b border-border px-4 py-2.5">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">最近活动</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">{t('workbench.recent_activity')}</h2>
                 </div>
                 {recentEvents.length === 0 ? (
                   <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                    暂无最近活动。
+                    {t('workbench.no_recent_activity')}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -444,12 +450,12 @@ export default function DashboardPage() {
                       >
                         <span className="text-foreground">
                           <span className="text-muted-foreground font-medium">
-                            {actionLabels[event.action] ?? event.action}
+                            {(actionLabels[event.action] ? t(actionLabels[event.action]) : '') || event.action}
                           </span>{' '}
                           <span className="text-muted-foreground/50 font-mono text-[10px]">{event.resource_type}</span>
                         </span>
                         <span className="text-[10px] text-muted-foreground/40">
-                          {formatTime(event.created_at)}
+                          {formatTime(event.created_at, t)}
                         </span>
                       </div>
                     ))}
@@ -473,9 +479,9 @@ export default function DashboardPage() {
               ) : (
                 <div className="rounded-lg border border-border border-dashed bg-card/30 p-8 flex flex-col items-center justify-center text-center h-full">
                   <Zap className="w-8 h-8 text-muted-foreground/30 mb-3 animate-pulse-slow" />
-                  <h3 className="text-sm font-semibold text-foreground">AI 助手即将启用</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{t('workbench.ai_placeholder_title')}</h3>
                   <p className="text-xs text-muted-foreground/60 mt-1 max-w-sm leading-relaxed">
-                    当前处于本地规则引擎模式。在 Settings 中配置 AI 提供商（提供商、模型与 API 密钥）后，即可开启高级 AI 智能问答与自主治理分析。
+                    {t('workbench.ai_placeholder_desc')}
                   </p>
                 </div>
               )}

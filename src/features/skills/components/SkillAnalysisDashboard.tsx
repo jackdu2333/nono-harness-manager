@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, Boxes, Brain, CheckCircle2, Layers3, ListFilte
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSkillsStore } from '../store';
+import { useTranslation } from 'react-i18next';
 import {
   SkillAnalysisFilters,
   SkillAnalysisItem,
@@ -47,6 +48,7 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
     toggleNeedsImprovement,
     createAnalysisProposal,
   } = useSkillsStore();
+  const { t } = useTranslation();
   const [rankingTab, setRankingTab] = useState<RankingTab>('30d');
   const [message, setMessage] = useState<string | null>(null);
   const [focusedSkillIds, setFocusedSkillIds] = useState<string[] | null>(null);
@@ -85,13 +87,13 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
       reason,
       ...extra,
     });
-    setMessage('已创建治理 proposal，等待 Harness 审核。');
+    setMessage(t('skills.created_proposal'));
   };
 
   if (!analysisOverview) {
     return (
       <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-        {isLoadingAnalysis ? '正在生成 Skill 分析...' : '暂无分析数据'}
+        {isLoadingAnalysis ? t('skills.analyzing') : t('skills.no_analysis_data')}
       </div>
     );
   }
@@ -108,43 +110,43 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
       <div className="px-4 lg:px-6 py-4 space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Skill 资产经营分析</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('skills.analysis_dashboard')}</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              使用口径：可观测使用次数（日志推断），不包含 Harness UI 管理操作。
+              {t('skills.analysis_usage_note')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={analysisFilters.source_ids?.[0] ?? 'all'} onValueChange={(value) => applyFilter({ source_ids: value === 'all' ? [] : [value] })}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="来源：全部" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder={t('skills.source_all')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">来源：全部</SelectItem>
+                <SelectItem value="all">{t('skills.source_all')}</SelectItem>
               {sources.map((source) => (
                   <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>
               ))}
               </SelectContent>
             </Select>
             <Select value={analysisFilters.agent_clients?.[0] ?? 'all'} onValueChange={(value) => applyFilter({ agent_clients: value === 'all' ? [] : [value] })}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Agent：全部" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder={t('skills.agent_all')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Agent：全部</SelectItem>
+                <SelectItem value="all">{t('skills.agent_all')}</SelectItem>
               {analysisOverview.agent_fit_matrix.agents.map((agent) => (
                   <SelectItem key={agent} value={agent}>{agent}</SelectItem>
               ))}
               </SelectContent>
             </Select>
             <Select value={analysisFilters.categories?.[0] ?? 'all'} onValueChange={(value) => applyFilter({ categories: value === 'all' ? [] : [value] })}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="分类：全部" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder={t('skills.category_all')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">分类：全部</SelectItem>
+                <SelectItem value="all">{t('skills.category_all')}</SelectItem>
               {categories.map((category) => (
                   <SelectItem key={category} value={category}>{category}</SelectItem>
               ))}
               </SelectContent>
             </Select>
             <Select value={analysisFilters.ai_ready_statuses?.[0] ?? 'all'} onValueChange={(value) => applyFilter({ ai_ready_statuses: value === 'all' ? [] : [value as NonNullable<SkillAnalysisFilters['ai_ready_statuses']>[number]] })}>
-              <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="AI Ready：全部" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder={t('skills.ai_ready_all')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">AI Ready：全部</SelectItem>
+                <SelectItem value="all">{t('skills.ai_ready_all')}</SelectItem>
               {aiReadyStatuses.map((status) => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
@@ -152,17 +154,17 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
             </Select>
             <Button variant="outline" className="h-9 gap-2" onClick={resetFilters}>
               <ListFilter className="w-4 h-4" />
-              重置
+              {t('skills.reset_filters')}
             </Button>
             <Button variant="secondary" className="h-9 gap-2" onClick={() => fetchAnalysis()} disabled={isLoadingAnalysis}>
               <RefreshCw className={`w-4 h-4 ${isLoadingAnalysis ? 'animate-spin' : ''}`} />
-              刷新分析
+              {t('skills.refresh_analysis')}
             </Button>
           </div>
         </div>
 
         {message && (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
             {message}
           </div>
         )}
@@ -174,23 +176,23 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
           onFocus={setFocusedSkillIds}
         />
 
-        <Section title="价值四象限" icon={<Boxes className="w-4 h-4" />}>
+        <Section title={t('skills.quadrant_title')} icon={<Boxes className="w-4 h-4" />}>
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
-            <Quadrant title="核心资产" items={analysisOverview.quadrants.core_assets} tone="emerald" onSelectSkill={onSelectSkill} />
-            <Quadrant title="优先打磨" items={analysisOverview.quadrants.priority_improvements} tone="amber" onSelectSkill={onSelectSkill} />
-            <Quadrant title="潜力资产" items={analysisOverview.quadrants.potential_assets} tone="blue" onSelectSkill={onSelectSkill} />
-            <Quadrant title="清理候选" items={analysisOverview.quadrants.cleanup_candidates} tone="slate" onSelectSkill={onSelectSkill} />
+            <Quadrant title={t('skills.quadrant_core')} items={analysisOverview.quadrants.core_assets} tone="emerald" onSelectSkill={onSelectSkill} />
+            <Quadrant title={t('skills.quadrant_polish')} items={analysisOverview.quadrants.priority_improvements} tone="amber" onSelectSkill={onSelectSkill} />
+            <Quadrant title={t('skills.quadrant_potential')} items={analysisOverview.quadrants.potential_assets} tone="blue" onSelectSkill={onSelectSkill} />
+            <Quadrant title={t('skills.quadrant_cleanup')} items={analysisOverview.quadrants.cleanup_candidates} tone="slate" onSelectSkill={onSelectSkill} />
           </div>
         </Section>
 
-        <Section title="使用排行" icon={<Activity className="w-4 h-4" />}>
+        <Section title={t('skills.usage_ranking')} icon={<Activity className="w-4 h-4" />}>
           <div className="flex items-center justify-between gap-3 mb-3">
-            <p className="text-xs text-muted-foreground">可观测使用次数（日志推断）</p>
+            <p className="text-xs text-muted-foreground">{t('skills.usage_observed')}</p>
             <div className="inline-flex rounded-md border border-border overflow-hidden">
               {[
-                ['7d', '最近 7 天'],
-                ['30d', '最近 30 天'],
-                ['all', '历史以来'],
+                ['7d', t('skills.last_7d')],
+                ['30d', t('skills.last_30d')],
+                ['all', t('skills.all_time')],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -206,7 +208,7 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
         </Section>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Section title="质量问题清单" icon={<AlertTriangle className="w-4 h-4" />}>
+          <Section title={t('skills.quality_issues')} icon={<AlertTriangle className="w-4 h-4" />}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {analysisOverview.quality_issues.map((issue) => (
                 <button
@@ -220,27 +222,27 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
                     <span className="text-sm font-medium text-foreground">{issue.label}</span>
                     <span className="text-xs text-muted-foreground">{issue.count}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">点击定位第一项</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('skills.locate_first')}</p>
                 </button>
               ))}
-              {analysisOverview.quality_issues.length === 0 && <EmptyState text="当前筛选下没有明显质量问题。" />}
+              {analysisOverview.quality_issues.length === 0 && <EmptyState text={t('skills.no_quality_issues')} />}
             </div>
           </Section>
 
-          <Section title="任务场景覆盖" icon={<Layers3 className="w-4 h-4" />}>
+          <Section title={t('skills.scenario_coverage')} icon={<Layers3 className="w-4 h-4" />}>
             <div className="space-y-2">
               {analysisOverview.scenario_coverage.map((scenario) => (
                 <div key={scenario.scenario} className="rounded-md border border-border bg-card px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{scenario.scenario}</span>
                     <span className="text-xs text-muted-foreground">
-                      {scenario.skill_count} 个 · 30 天 {scenario.usage_30d} 次
+                      {t('skills.scenario_30d_count', { count: scenario.skill_count, usage: scenario.usage_30d })}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Pill>AI Ready {scenario.ai_ready_count}</Pill>
-                    <Pill>Broken {scenario.broken_count}</Pill>
-                    <Pill>均分 {scenario.average_health_score}</Pill>
+                    <Pill>{t('skills.ai_ready_count', { count: scenario.ai_ready_count })}</Pill>
+                    <Pill>{t('skills.broken_count', { count: scenario.broken_count })}</Pill>
+                    <Pill>{t('skills.scenario_avg_score', { score: scenario.average_health_score })}</Pill>
                     {scenario.signals.map((signal) => <Pill key={signal} warn>{signal}</Pill>)}
                   </div>
                 </div>
@@ -249,39 +251,39 @@ export function SkillAnalysisDashboard({ onSelectSkill }: SkillAnalysisDashboard
           </Section>
         </div>
 
-        <Section title="重复 / 重叠分析" icon={<Layers3 className="w-4 h-4" />}>
+        <Section title={t('skills.dup_overlap')} icon={<Layers3 className="w-4 h-4" />}>
           <DuplicateGroups groups={analysisOverview.duplicate_groups} onSelectSkill={onSelectSkill} onCreateProposal={createProposal} />
         </Section>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Section title="Agent × Skill 适配" icon={<Brain className="w-4 h-4" />}>
+          <Section title={t('skills.agent_skill_fit')} icon={<Brain className="w-4 h-4" />}>
             <AgentFitSummary skills={analysisOverview.skills} />
           </Section>
 
-          <Section title="AI 治理建议" icon={<Sparkles className="w-4 h-4" />}>
+          <Section title={t('skills.ai_governance')} icon={<Sparkles className="w-4 h-4" />}>
             <Recommendations
               recommendations={analysisOverview.recommendations}
               onSelectSkill={onSelectSkill}
               onMarkReview={async (skillId) => {
                 await toggleNeedsReview(skillId, true);
-                setMessage('已标记为待整理。');
+                setMessage(t('skills.marked_organize'));
               }}
               onMarkImprove={async (skillId) => {
                 await toggleNeedsImprovement(skillId, true);
-                setMessage('已标记为待进化。');
+                setMessage(t('skills.marked_evolve'));
               }}
               onCreateProposal={createProposal}
             />
           </Section>
         </div>
 
-        <Section title="分析结果列表" icon={<ListFilter className="w-4 h-4" />}>
+        <Section title={t('skills.analysis_list')} icon={<ListFilter className="w-4 h-4" />}>
           <div className="flex items-center justify-between gap-2 mb-3">
             <p className="text-xs text-muted-foreground">
-              {focusedSkillIds ? `已过滤 ${focusedSkillIds.length} 个 Skill` : `当前筛选下 ${analysisOverview.skills.length} 个 Skill`}
+              {focusedSkillIds ? t('skills.filtered_count', { count: focusedSkillIds.length }) : t('skills.current_count', { count: analysisOverview.skills.length })}
             </p>
             {focusedSkillIds && (
-              <Button variant="outline" size="sm" onClick={() => setFocusedSkillIds(null)}>清除组内过滤</Button>
+              <Button variant="outline" size="sm" onClick={() => setFocusedSkillIds(null)}>{t('skills.clear_group_filter')}</Button>
             )}
           </div>
           <SkillResultList
@@ -308,19 +310,20 @@ function SummaryCards({
   duplicateSkillIds: Set<string>;
   onFocus: (skillIds: string[] | null) => void;
 }) {
+  const { t } = useTranslation();
   const cards: {
     label: string;
     value: number;
     predicate: ((skill: SkillAnalysisItem) => boolean) | null;
   }[] = [
-    { label: '总 Skills', value: summary.total_skills, predicate: null },
+    { label: 'Total', value: summary.total_skills, predicate: null },
     { label: 'AI Ready', value: summary.ai_ready, predicate: (skill) => skill.ai_ready_status === 'AI Ready' },
-    { label: '待整理', value: summary.needs_review, predicate: (skill) => skill.quality_flags.some((flag) => flag.includes('missing')) },
-    { label: '待进化', value: summary.needs_improvement, predicate: (skill) => skill.value_group === '优先打磨' },
-    { label: '疑似重复', value: summary.suspected_duplicates, predicate: (skill) => duplicateSkillIds.has(skill.skill_id) },
-    { label: '长期未使用', value: summary.dormant, predicate: (skill) => skill.usage_all_time > 0 && skill.usage_30d === 0 },
+    { label: t('skills.tag_organize'), value: summary.needs_review, predicate: (skill) => skill.quality_flags.some((flag) => flag.includes('missing')) },
+    { label: t('skills.tag_evolve'), value: summary.needs_improvement, predicate: (skill) => skill.value_group === '优先打磨' },
+    { label: t('skills.tag_duplicate'), value: summary.suspected_duplicates, predicate: (skill) => duplicateSkillIds.has(skill.skill_id) },
+    { label: t('skills.tag_long_unused'), value: summary.dormant, predicate: (skill) => skill.usage_all_time > 0 && skill.usage_30d === 0 },
     { label: 'Broken', value: summary.broken, predicate: (skill) => skill.ai_ready_status === 'Broken' },
-    { label: '平均 Health', value: summary.average_health_score, predicate: null },
+    { label: t('skills.avg_health'), value: summary.average_health_score, predicate: null },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
@@ -358,41 +361,43 @@ function Section({ title, icon, children }: { title: string; icon: ReactNode; ch
 }
 
 function Quadrant({ title, items, tone, onSelectSkill }: { title: string; items: SkillQuadrantItem[]; tone: string; onSelectSkill: (skillId: string) => void }) {
+  const { t } = useTranslation();
   const toneClass: Record<string, string> = {
-    emerald: 'border-emerald-200 bg-emerald-50/40',
-    amber: 'border-amber-200 bg-amber-50/40',
-    blue: 'border-blue-200 bg-blue-50/40',
-    slate: 'border-slate-200 bg-slate-50/40',
+    emerald: 'border-success/30 bg-success/5',
+    amber: 'border-warning/30 bg-warning/5',
+    blue: 'border-primary/30 bg-primary/5',
+    slate: 'border-border bg-muted/40',
   };
   return (
     <div className={`rounded-md border ${toneClass[tone] ?? 'border-border bg-card'} p-3 min-h-[220px]`}>
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-foreground">{title}</h4>
-        <span className="text-xs text-muted-foreground">Top {items.length}</span>
+        <span className="text-xs text-muted-foreground">{t('skills.quadrant_top', { count: items.length })}</span>
       </div>
       <div className="space-y-2">
         {items.slice(0, 8).map((item) => (
           <button key={item.skill_id} onClick={() => onSelectSkill(item.skill_id)} className="w-full text-left rounded-md bg-background/80 border border-border/60 px-2.5 py-2 hover:bg-background">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium truncate">{item.name}</span>
-              <span className="text-xs text-muted-foreground shrink-0">H {item.health_score}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{t('skills.health_score_short', { score: item.health_score })}</span>
             </div>
             <div className="text-[11px] text-muted-foreground mt-1">
-              30 天 {item.usage_30d} · 历史 {item.usage_all_time}
+              {t('skills.quadrant_30d_alltime', { d30: item.usage_30d, all: item.usage_all_time })}
             </div>
             <div className="mt-1 flex flex-wrap gap-1">
               {item.reasons.slice(0, 2).map((reason) => <Pill key={reason}>{reason}</Pill>)}
             </div>
           </button>
         ))}
-        {items.length === 0 && <EmptyState text="暂无匹配 Skill。" />}
+        {items.length === 0 && <EmptyState text={t('skills.no_match_skill')} />}
       </div>
     </div>
   );
 }
 
 function RankingList({ items, onSelectSkill }: { items: SkillUsageRankItem[]; onSelectSkill: (skillId: string) => void }) {
-  if (items.length === 0) return <EmptyState text="当前筛选下暂无可观测使用记录。" />;
+  const { t } = useTranslation();
+  if (items.length === 0) return <EmptyState text={t('skills.no_usage_records')} />;
   return (
     <div className="divide-y divide-border rounded-md border border-border overflow-hidden">
       {items.map((item, index) => (
@@ -400,9 +405,9 @@ function RankingList({ items, onSelectSkill }: { items: SkillUsageRankItem[]; on
           <div className="grid grid-cols-[40px_1fr_90px_90px_120px] items-center gap-3 text-sm">
             <span className="text-xs text-muted-foreground">#{index + 1}</span>
             <span className="font-medium truncate">{item.name}</span>
-            <span className="text-xs text-muted-foreground">{item.count} 次</span>
-            <span className="text-xs text-muted-foreground">H {item.health_score}</span>
-            <span className="text-xs text-muted-foreground truncate">{item.primary_agent_client ?? 'Unknown'}</span>
+            <span className="text-xs text-muted-foreground">{t('skills.count_times_short', { count: item.count })}</span>
+            <span className="text-xs text-muted-foreground">{t('skills.health_score_short', { score: item.health_score })}</span>
+            <span className="text-xs text-muted-foreground truncate">{item.primary_agent_client ?? t('skills.analysis_unknown_agent')}</span>
           </div>
         </button>
       ))}
@@ -411,17 +416,18 @@ function RankingList({ items, onSelectSkill }: { items: SkillUsageRankItem[]; on
 }
 
 function SkillResultList({ skills, onSelectSkill }: { skills: SkillAnalysisItem[]; onSelectSkill: (skillId: string) => void }) {
-  if (skills.length === 0) return <EmptyState text="没有匹配的 Skill。" />;
+  const { t } = useTranslation();
+  if (skills.length === 0) return <EmptyState text={t('skills.analysis_no_match')} />;
   return (
     <div className="divide-y divide-border rounded-md border border-border overflow-hidden">
       {skills.map((skill) => (
         <button key={skill.skill_id} onClick={() => onSelectSkill(skill.skill_id)} className="w-full text-left px-3 py-2 bg-card hover:bg-muted transition-colors">
           <div className="grid grid-cols-[1fr_96px_110px_110px_120px] items-center gap-3 text-sm">
             <span className="font-medium truncate">{skill.name}</span>
-            <span className="text-xs text-muted-foreground">H {skill.health_score}</span>
+            <span className="text-xs text-muted-foreground">{t('skills.health_score_short', { score: skill.health_score })}</span>
             <span className="text-xs text-muted-foreground truncate">{skill.ai_ready_status}</span>
-            <span className="text-xs text-muted-foreground">30 天 {skill.usage_30d}</span>
-            <span className="text-xs text-muted-foreground truncate">{skill.primary_agent_client ?? 'Unknown'}</span>
+            <span className="text-xs text-muted-foreground">{t('skills.usage_30d_short', { count: skill.usage_30d })}</span>
+            <span className="text-xs text-muted-foreground truncate">{skill.primary_agent_client ?? t('skills.analysis_unknown_agent')}</span>
           </div>
         </button>
       ))}
@@ -430,7 +436,8 @@ function SkillResultList({ skills, onSelectSkill }: { skills: SkillAnalysisItem[
 }
 
 function DuplicateGroups({ groups, onSelectSkill, onCreateProposal }: { groups: SkillDuplicateGroup[]; onSelectSkill: (skillId: string) => void; onCreateProposal: (skillId: string, proposalType: SkillAnalysisProposalType, reason: string, extra?: Record<string, unknown>) => Promise<void> }) {
-  if (groups.length === 0) return <EmptyState text="当前筛选下没有疑似重复或重叠组。" />;
+  const { t } = useTranslation();
+  if (groups.length === 0) return <EmptyState text={t('skills.no_dup_groups')} />;
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
       {groups.slice(0, 12).map((group) => {
@@ -446,13 +453,13 @@ function DuplicateGroups({ groups, onSelectSkill, onCreateProposal }: { groups: 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onCreateProposal(primary, 'skill_merge_recommendation', '疑似重复或功能重叠，建议人工确认合并或归档旧版本。', {
+                  onClick={() => onCreateProposal(primary, 'skill_merge_recommendation', t('skills.dup_proposal_desc'), {
                     group_id: group.group_id,
                     candidate_skill_ids: group.skills.map((skill) => skill.skill_id),
                     suggested_action: group.suggested_action,
                   })}
                 >
-                  生成 proposal
+                  {t('skills.generate_proposal')}
                 </Button>
               )}
             </div>
@@ -461,7 +468,7 @@ function DuplicateGroups({ groups, onSelectSkill, onCreateProposal }: { groups: 
                 <button key={skill.skill_id} onClick={() => onSelectSkill(skill.skill_id)} className="w-full text-left rounded-md border border-border/70 bg-background px-2 py-1.5 hover:bg-muted">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium truncate">{skill.name}</span>
-                    <span className="text-xs text-muted-foreground">H {skill.health_score}</span>
+                    <span className="text-xs text-muted-foreground">{t('skills.health_score_short', { score: skill.health_score })}</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">{skill.path}</div>
                 </button>
@@ -478,6 +485,7 @@ function DuplicateGroups({ groups, onSelectSkill, onCreateProposal }: { groups: 
 }
 
 function AgentFitSummary({ skills }: { skills: SkillAnalysisItem[] }) {
+  const { t } = useTranslation();
   const rows = useMemo(() => {
     const map = new Map<string, { strong: number; possible: number; observed: number }>();
     skills.forEach((skill) => {
@@ -492,18 +500,18 @@ function AgentFitSummary({ skills }: { skills: SkillAnalysisItem[] }) {
     });
     return Array.from(map.entries()).sort((a, b) => b[1].observed - a[1].observed);
   }, [skills]);
-  if (rows.length === 0) return <EmptyState text="暂无 Agent 适配线索。" />;
+  if (rows.length === 0) return <EmptyState text={t('skills.no_agent_fit')} />;
   return (
     <div className="space-y-2">
       {rows.map(([agent, value]) => (
         <div key={agent} className="rounded-md border border-border bg-card px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium">{agent}</span>
-            <span className="text-xs text-muted-foreground">可观测 {value.observed} 次</span>
+            <span className="text-xs text-muted-foreground">{t('skills.agent_observed', { count: value.observed })}</span>
           </div>
           <div className="mt-2 flex gap-1.5">
-            <Pill>适配 {value.possible}</Pill>
-            <Pill>强证据 {value.strong}</Pill>
+            <Pill>{t('skills.fit_possible_count', { count: value.possible })}</Pill>
+            <Pill>{t('skills.fit_strong_count', { count: value.strong })}</Pill>
           </div>
         </div>
       ))}
@@ -524,13 +532,14 @@ function Recommendations({
   onMarkImprove: (skillId: string) => Promise<void>;
   onCreateProposal: (skillId: string, proposalType: SkillAnalysisProposalType, reason: string, extra?: Record<string, unknown>) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const groups: { title: string; proposalType: SkillAnalysisProposalType; items: SkillRecommendationItem[]; icon: ReactNode }[] = [
-    { title: '最值得优化', proposalType: 'skill_metadata_improvement', items: recommendations.optimize_top, icon: <Wand2 className="w-4 h-4" /> },
-    { title: '最值得归档评估', proposalType: 'skill_archive_recommendation', items: recommendations.archive_top, icon: <AlertTriangle className="w-4 h-4" /> },
-    { title: '最值得补描述', proposalType: 'skill_metadata_improvement', items: recommendations.missing_description_top, icon: <CheckCircle2 className="w-4 h-4" /> },
-    { title: '最值得补示例', proposalType: 'skill_example_improvement', items: recommendations.missing_example_top, icon: <CheckCircle2 className="w-4 h-4" /> },
-    { title: '最值得补边界', proposalType: 'skill_boundary_improvement', items: recommendations.missing_boundary_top, icon: <CheckCircle2 className="w-4 h-4" /> },
-    { title: '让 Codex 分析', proposalType: 'skill_metadata_improvement', items: recommendations.codex_analysis_top, icon: <Sparkles className="w-4 h-4" /> },
+    { title: t('skills.rec_optimize_top'), proposalType: 'skill_metadata_improvement', items: recommendations.optimize_top, icon: <Wand2 className="w-4 h-4" /> },
+    { title: t('skills.rec_archive_top'), proposalType: 'skill_archive_recommendation', items: recommendations.archive_top, icon: <AlertTriangle className="w-4 h-4" /> },
+    { title: t('skills.rec_missing_desc_top'), proposalType: 'skill_metadata_improvement', items: recommendations.missing_description_top, icon: <CheckCircle2 className="w-4 h-4" /> },
+    { title: t('skills.rec_missing_example_top'), proposalType: 'skill_example_improvement', items: recommendations.missing_example_top, icon: <CheckCircle2 className="w-4 h-4" /> },
+    { title: t('skills.rec_missing_boundary_top'), proposalType: 'skill_boundary_improvement', items: recommendations.missing_boundary_top, icon: <CheckCircle2 className="w-4 h-4" /> },
+    { title: t('skills.rec_codex_analysis'), proposalType: 'skill_metadata_improvement', items: recommendations.codex_analysis_top, icon: <Sparkles className="w-4 h-4" /> },
   ];
   return (
     <div className="space-y-3">
@@ -548,8 +557,8 @@ function Recommendations({
                 </button>
                 <div className="text-[11px] text-muted-foreground mt-1">{item.reason}</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Button variant="outline" size="sm" onClick={() => onMarkReview(item.skill_id)}>标记待整理</Button>
-                  <Button variant="outline" size="sm" onClick={() => onMarkImprove(item.skill_id)}>标记待进化</Button>
+                  <Button variant="outline" size="sm" onClick={() => onMarkReview(item.skill_id)}>{t('skills.mark_needs_review')}</Button>
+                  <Button variant="outline" size="sm" onClick={() => onMarkImprove(item.skill_id)}>{t('skills.mark_needs_evolve')}</Button>
                   <Button
                     variant="secondary"
                     size="sm"
@@ -558,12 +567,12 @@ function Recommendations({
                       health_score: item.health_score,
                     })}
                   >
-                    生成 proposal
+                    {t('skills.generate_proposal')}
                   </Button>
                 </div>
               </div>
             ))}
-            {group.items.length === 0 && <div className="px-3 py-2"><EmptyState text="暂无建议。" /></div>}
+            {group.items.length === 0 && <div className="px-3 py-2"><EmptyState text={t('skills.analysis_no_suggestions')} /></div>}
           </div>
         </div>
       ))}
@@ -573,7 +582,7 @@ function Recommendations({
 
 function Pill({ children, warn = false }: { children: ReactNode; warn?: boolean }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${warn ? 'bg-amber-100 text-amber-800' : 'bg-muted text-muted-foreground'}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${warn ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
       {children}
     </span>
   );

@@ -4,6 +4,7 @@
 mod ai;
 mod commands;
 mod db;
+mod health;
 mod models;
 mod scanner;
 mod security;

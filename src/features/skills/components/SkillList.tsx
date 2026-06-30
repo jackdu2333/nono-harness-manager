@@ -55,28 +55,28 @@ export function SkillList({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-foreground text-base">{skill.name}</span>
               {skill.is_favorite === 1 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">常用</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning">{t('skills.tag_frequent')}</span>
               )}
               {skill.needs_review === 1 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">待整理</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{t('skills.tag_organize')}</span>
               )}
               {skill.needs_improvement === 1 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">待进化</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{t('skills.tag_evolve')}</span>
               )}
               {skill.duplicate_group_id && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
-                  title="已保存的重复标记（持久化，不会因刷新消失）"
+                  title={t('skills.dup_tag_persisted')}
                 >
-                  已标记重复
+                  {t('skills.dup_tagged')}
                 </span>
               )}
               {!skill.duplicate_group_id && duplicateAssignment[skill.id] && (
                 <span
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                  title={`实时疑似重复（未保存，刷新或规则变化可能改变）${dupReason?.length ? ' · 命中：' + dupReason.join('、') : ''}`}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning"
+                  title={`${t('skills.dup_tag_realtime')}${dupReason?.length ? t('skills.dup_hit_prefix') + dupReason.join('、') : ''}`}
                 >
-                  实时疑似重复
+                  {t('skills.dup_realtime_badge')}
                 </span>
               )}
             </div>
@@ -85,19 +85,19 @@ export function SkillList({
                 {skill.description}
                 {skill.description_confidence === 'low' && (
                   <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
-                    推测
+                    {t('skills.desc_inferred_badge')}
                   </span>
                 )}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground/60 mt-1 italic">暂无描述</div>
+              <div className="text-sm text-muted-foreground/60 mt-1 italic">{t('mcp.no_description_short')}</div>
             )}
           </div>
         );
       },
     }),
     columnHelper.accessor('source_id', {
-      header: '来源',
+      header: t('skills.source_label'),
       cell: info => {
         const sourceId = info.getValue();
         const rawName = sourceId ? sourceMap.get(sourceId) ?? '-' : '-';
@@ -106,10 +106,10 @@ export function SkillList({
       },
     }),
     columnHelper.accessor('category', {
-      header: '分类',
+      header: t('skills.category_label'),
       cell: info => (
         <span className="text-xs text-muted-foreground whitespace-nowrap truncate max-w-[120px] block">
-          {info.getValue() || '未分类'}
+          {info.getValue() || t('common.uncategorized')}
         </span>
       ),
     }),

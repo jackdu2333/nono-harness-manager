@@ -3,8 +3,10 @@ import { Play, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAgentsStore } from '@/features/agents/store';
 import { getAgentLaunchUnavailableReason, isAgentLaunchable } from '@/features/agents/utils/launchability';
+import { useTranslation } from 'react-i18next';
 
 export function AgentLaunchTab({ agent }: { agent: Agent }) {
+  const { t } = useTranslation();
   const launchAgent = useAgentsStore(s => s.launchAgent);
   const isLaunchable = isAgentLaunchable(agent);
 
@@ -20,19 +22,19 @@ export function AgentLaunchTab({ agent }: { agent: Agent }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Play className="w-4 h-4 text-primary" /> 启动配置 (Launch Config)
+              <Play className="w-4 h-4 text-primary" /> {t('agents.launch_config_title')}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              第一阶段仅支持安全启动 macOS App。
+              {t('agents.launch_config_note')}
             </p>
           </div>
           <Button onClick={handleLaunch} disabled={!isLaunchable} className="shrink-0 gap-2">
-            <Play className="w-4 h-4 fill-current" /> 启动
+            <Play className="w-4 h-4 fill-current" /> {t('agents.launch')}
           </Button>
         </div>
 
         {!isLaunchable && (
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-sm">
+          <div className="p-3 bg-warning/10 border border-warning/20 rounded-md flex items-center gap-2 text-warning text-sm">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{getAgentLaunchUnavailableReason(agent)}</span>
           </div>

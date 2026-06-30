@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   server: McpServer;
@@ -17,12 +18,13 @@ interface Props {
 }
 
 export function MCPServerListItem({ server, isSelected, onSelect }: Props) {
+  const { t } = useTranslation();
   // Determine status color
   const statusLower = (server.status || '').toLowerCase();
-  let statusColor = 'bg-gray-400';
-  if (statusLower === 'active') statusColor = 'bg-green-500';
-  else if (statusLower === 'error' || statusLower === 'broken') statusColor = 'bg-red-500';
-  else if (statusLower === 'warning') statusColor = 'bg-yellow-500';
+  let statusColor = 'bg-muted-foreground';
+  if (statusLower === 'active') statusColor = 'bg-success';
+  else if (statusLower === 'error' || statusLower === 'broken') statusColor = 'bg-destructive';
+  else if (statusLower === 'warning') statusColor = 'bg-warning';
 
   const sourceName = server.source_path?.includes('Library/Application Support') ? 'System Config' 
     : server.source_path?.includes('.gemini') ? 'Project Config' 
@@ -56,7 +58,7 @@ export function MCPServerListItem({ server, isSelected, onSelect }: Props) {
 
           {/* Description */}
           <p className="text-xs text-muted-foreground line-clamp-2 mb-3 pr-4 leading-relaxed">
-            {server.description || '暂无描述'}
+            {server.description || t('mcp.no_description_short')}
           </p>
 
           {/* Meta Chips */}
@@ -70,7 +72,7 @@ export function MCPServerListItem({ server, isSelected, onSelect }: Props) {
               {server.command.split('/').pop()}
             </span>
             <span className="shrink-0">•</span>
-            <span className="shrink-0">能力未解析</span>
+            <span className="shrink-0">{t('mcp.capability_unparsed')}</span>
             <span className="shrink-0 ml-auto hidden sm:block">
               {new Date(server.updated_at).toLocaleDateString()}
             </span>
@@ -91,7 +93,7 @@ export function MCPServerListItem({ server, isSelected, onSelect }: Props) {
                   e.preventDefault();
                   useMcpStore.getState().deleteServer(server.id);
                 }} 
-                className="text-red-600 focus:text-red-600 dark:text-red-500 focus:bg-red-500/10"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 <Trash2 className="w-4 h-4 mr-2" /> 移除服务器
               </DropdownMenuItem>

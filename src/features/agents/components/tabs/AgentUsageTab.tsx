@@ -1,8 +1,10 @@
 import React from 'react';
 import { Agent } from '@/features/agents/types';
 import { BarChart3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function AgentUsageTab({ agent }: { agent: Agent }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -20,9 +22,9 @@ export function AgentUsageTab({ agent }: { agent: Agent }) {
 
       <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border/50">
         <BarChart3 className="w-10 h-10 mb-4 opacity-50" />
-        <h3 className="text-sm font-medium text-foreground mb-1">更多统计指标即将到来</h3>
+        <h3 className="text-sm font-medium text-foreground mb-1">{t('agents.usage_coming')}</h3>
         <p className="text-xs max-w-sm">
-          图表和近期趋势分析功能正在开发中。
+          {t('agents.usage_coming_desc')}
         </p>
       </div>
     </div>

@@ -46,12 +46,39 @@ export interface HealthIssue {
   description: string;
   suggestion: string;
   status: string;
+  category?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  evidence?: string | null;
 }
+
+export interface HealthModuleScore {
+  module: string;
+  label: string;
+  weight: number;
+  score: number;
+  penalty: number;
+  issue_counts: Record<string, number>;
+  status: string;
+}
+
+export interface CheckSummary {
+  checked_resources: number;
+  checked_categories: string[];
+  issue_counts: Record<string, number>;
+  score_explanation: string[];
+  module_scores?: HealthModuleScore[];
+}
+
+export type HealthStatus =
+  | 'healthy' | 'good' | 'needs_attention' | 'degraded' | 'critical' | 'not_ready';
 
 export interface HealthReport {
   score: number;
+  status?: HealthStatus | string | null;
   issues: HealthIssue[];
   generated_at: string;
+  summary?: CheckSummary | null;
 }
 
 export interface ProjectBinding {

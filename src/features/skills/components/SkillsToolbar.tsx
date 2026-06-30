@@ -86,38 +86,39 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
   }, [skills, sourceFilter, clientFilter, categoryFilter, statusFilter, sources]);
 
   const getSourceLabel = () => {
-    if (sourceFilter.length === 0) return '来源：全部';
+    if (sourceFilter.length === 0) return t('skills.source_all');
     if (sourceFilter.length === 1) {
       const src = sources.find(s => s.id === sourceFilter[0]);
-      return `来源：${src ? src.name : sourceFilter[0]}`;
+      return `${t('skills.source_label')}：${src ? src.name : sourceFilter[0]}`;
     }
-    return `来源：已选 ${sourceFilter.length} 项`;
+    return t('skills.source_selected', { count: sourceFilter.length });
   };
 
   const getClientLabel = () => {
-    if (clientFilter.length === 0) return '适用：全部';
-    if (clientFilter.length === 1) return `适用：${clientFilter[0]}`;
-    return `适用：已选 ${clientFilter.length} 项`;
+    if (clientFilter.length === 0) return t('skills.applicable_all');
+    if (clientFilter.length === 1) return `${t('skills.applicable_label')}：${clientFilter[0]}`;
+    return t('skills.applicable_selected', { count: clientFilter.length });
   };
 
   const getCategoryLabel = () => {
-    if (categoryFilter.length === 0) return '分类：全部';
-    if (categoryFilter.length === 1) return `分类：${categoryFilter[0]}`;
-    return `分类：已选 ${categoryFilter.length} 项`;
+    if (categoryFilter.length === 0) return t('skills.category_all');
+    if (categoryFilter.length === 1) return `${t('skills.category_label')}：${categoryFilter[0]}`;
+    return t('skills.category_selected', { count: categoryFilter.length });
+  };
+
+  const statusLabelMap: Record<string, string> = {
+    active: t('skills.status_using'),
+    draft: t('skills.status_draft'),
+    deprecated: t('skills.status_deprecated'),
+    broken: t('skills.status_invalid'),
   };
 
   const getStatusLabel = () => {
-    if (statusFilter.length === 0) return '状态：全部';
+    if (statusFilter.length === 0) return t('skills.status_all');
     if (statusFilter.length === 1) {
-      const mapping: Record<string, string> = {
-        active: '使用中',
-        draft: '草稿',
-        deprecated: '已弃用',
-        broken: '已失效',
-      };
-      return `状态：${mapping[statusFilter[0]] || statusFilter[0]}`;
+      return `${t('skills.status_label')}：${statusLabelMap[statusFilter[0]] || statusFilter[0]}`;
     }
-    return `状态：已选 ${statusFilter.length} 项`;
+    return t('skills.status_selected', { count: statusFilter.length });
   };
 
   return (
@@ -125,9 +126,9 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
       {/* First Row: Title + Stats on Left, Search + Actions on Right */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-baseline gap-2 shrink-0">
-          <h1 className="text-xl font-bold text-foreground tracking-tight">技能管理</h1>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{t('skills.title')}</h1>
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            共 {activeSkillsCount} 个技能 · {sources.length} 个资源库
+            {t('skills.total_skills', { count: activeSkillsCount })} · {t('skills.sources_count', { count: sources.length })}
           </span>
         </div>
 
@@ -149,7 +150,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
             className="gap-2 shrink-0 bg-muted text-foreground hover:bg-muted/80 h-9"
           >
             <RefreshCw className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-            扫描全部
+            {t('skills.scan_all')}
           </Button>
 
           <SkillSourcesDrawer />
@@ -211,7 +212,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
             collisionBoundary={mainElement || undefined}
             className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[220px] max-h-[280px] overflow-y-auto overflow-x-hidden bg-popover text-popover-foreground border border-border/40 shadow-lg"
           >
-            {['Codex', 'Claude Code', 'WorkBuddy', '通用'].map((client) => {
+            {['Codex', 'Claude Code', 'WorkBuddy', t('skills.source_general')].map((client) => {
               const isChecked = clientFilter.includes(client);
               return (
                 <DropdownMenuCheckboxItem
@@ -286,10 +287,10 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
             className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[220px] max-h-[280px] overflow-y-auto overflow-x-hidden bg-popover text-popover-foreground border border-border/40 shadow-lg"
           >
             {[
-              { value: 'active', label: '使用中' },
-              { value: 'draft', label: '草稿' },
-              { value: 'deprecated', label: '已弃用' },
-              { value: 'broken', label: '已失效' },
+              { value: 'active', label: t('skills.status_using') },
+              { value: 'draft', label: t('skills.status_draft') },
+              { value: 'deprecated', label: t('skills.status_deprecated') },
+              { value: 'broken', label: t('skills.status_invalid') },
             ].map((st) => {
               const isChecked = statusFilter.includes(st.value);
               return (
@@ -313,7 +314,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
 
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" className="text-xs text-muted-foreground shrink-0 h-9" onClick={clearFilters}>
-            清除筛选
+            {t('common.clear_filter')}
           </Button>
         )}
       </div>
@@ -321,13 +322,13 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
       {/* Third Row: Active Filter Chips */}
       {hasActiveFilters && (
         <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-border/40">
-          <span className="text-xs text-muted-foreground mr-1">当前筛选：</span>
+          <span className="text-xs text-muted-foreground mr-1">{t('skills.current_filter')}</span>
           
           {sourceFilter.map((srcId) => {
             const name = sources.find(s => s.id === srcId)?.name || srcId;
             return (
               <span key={`src-${srcId}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-[11px] text-foreground border border-border">
-                <span>来源：{name}</span>
+                <span>{t('skills.source_label')}：{name}</span>
                 <button
                   onClick={() => setSourceFilter(sourceFilter.filter(id => id !== srcId))}
                   className="hover:text-destructive p-0.5 rounded transition-colors"
@@ -340,7 +341,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
 
           {clientFilter.map((client) => (
             <span key={`client-${client}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-[11px] text-foreground border border-border">
-              <span>适用：{client}</span>
+              <span>{t('skills.applicable_label')}：{client}</span>
               <button
                 onClick={() => setClientFilter(clientFilter.filter(c => c !== client))}
                 className="hover:text-destructive p-0.5 rounded transition-colors"
@@ -352,7 +353,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
 
           {categoryFilter.map((cat) => (
             <span key={`cat-${cat}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-[11px] text-foreground border border-border">
-              <span>分类：{cat}</span>
+              <span>{t('skills.category_label')}：{cat}</span>
               <button
                 onClick={() => setCategoryFilter(categoryFilter.filter(c => c !== cat))}
                 className="hover:text-destructive p-0.5 rounded transition-colors"
@@ -363,15 +364,9 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
           ))}
 
           {statusFilter.map((stVal) => {
-            const labelMapping: Record<string, string> = {
-              active: '使用中',
-              draft: '草稿',
-              deprecated: '已弃用',
-              broken: '已失效',
-            };
             return (
               <span key={`status-${stVal}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-[11px] text-foreground border border-border">
-                <span>状态：{labelMapping[stVal] || stVal}</span>
+                <span>{t('skills.status_label')}：{statusLabelMap[stVal] || stVal}</span>
                 <button
                   onClick={() => setStatusFilter(statusFilter.filter(v => v !== stVal))}
                   className="hover:text-destructive p-0.5 rounded transition-colors"
@@ -388,7 +383,7 @@ export function SkillsToolbar({ globalFilter, setGlobalFilter }: { globalFilter:
             className="h-5 px-1.5 text-[11px] text-muted-foreground hover:text-destructive shrink-0 font-medium"
             onClick={clearFilters}
           >
-            清除全部
+            {t('common.clear_all')}
           </Button>
         </div>
       )}

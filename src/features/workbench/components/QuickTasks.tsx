@@ -1,5 +1,6 @@
 import { Layers, Cpu, Box, ShieldCheck, CalendarCheck, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import type { QuickTaskType } from '../types';
 
 interface QuickTasksProps {

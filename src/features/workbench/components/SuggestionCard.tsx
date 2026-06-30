@@ -1,5 +1,6 @@
 import { AlertTriangle, AlertCircle, Info, ArrowRight, FilePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import type { GovernanceSuggestion } from '../types';
 
 interface SuggestionCardProps {
@@ -10,26 +11,27 @@ interface SuggestionCardProps {
 
 const severityConfig = {
   critical: {
-    color: 'text-red-600 dark:text-red-400',
-    bg: 'bg-red-500/10',
+    color: 'text-destructive',
+    bg: 'bg-destructive/10',
     border: 'border-l-red-500',
     icon: AlertCircle,
   },
   warning: {
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-500/10',
+    color: 'text-warning',
+    bg: 'bg-warning/10',
     border: 'border-l-amber-500',
     icon: AlertTriangle,
   },
   info: {
-    color: 'text-sky-600 dark:text-sky-400',
-    bg: 'bg-sky-500/10',
+    color: 'text-info',
+    bg: 'bg-info/10',
     border: 'border-l-sky-500',
     icon: Info,
   },
 };
 
 export function SuggestionCard({ suggestion, onNavigate, onCreateProposal }: SuggestionCardProps) {
+  const { t } = useTranslation();
   const config = severityConfig[suggestion.severity];
   const Icon = config.icon;
 
@@ -64,7 +66,7 @@ export function SuggestionCard({ suggestion, onNavigate, onCreateProposal }: Sug
           onClick={() => onCreateProposal(suggestion)}
         >
           <FilePlus className="w-3 h-3" />
-          创建 Proposal
+          {t('workbench.create_proposal')}
         </Button>
       )}
     </div>

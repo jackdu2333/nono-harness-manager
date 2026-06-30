@@ -61,7 +61,7 @@ export function MCPDetailInspector({ server }: Props) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold text-foreground truncate" title={server.name}>{server.name}</h2>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wider shrink-0 ${server.status === 'active' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wider shrink-0 ${server.status === 'active' ? 'bg-success/10 text-success border border-success/20' : 'bg-muted text-muted-foreground'}`}>
                 {server.status || 'Unknown'}
               </span>
             </div>

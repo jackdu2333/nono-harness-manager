@@ -26,6 +26,7 @@ import {
   type NavItemKey,
 } from "../features/nav/config";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 type NavStatus = 'Beta' | 'Soon' | 'Ready' | 'Disabled';
 
@@ -42,34 +43,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
-  {
-    label: 'Overview',
-    items: [
-      { icon: LayoutDashboard, label: 'AI 工作台', path: '/', navKey: 'dashboard' },
-      { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Beta' },
-      { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Beta' },
-    ],
-  },
-  {
-    label: 'Assets',
-    items: [
-      { icon: Layers, label: 'Skills', path: '/skills', navKey: 'skills', status: 'Beta' },
-      { icon: Cpu, label: 'Agents', path: '/agents', navKey: 'agents', status: 'Beta' },
-      { icon: Box, label: 'MCP', path: '/mcp', navKey: 'mcp', status: 'Beta' },
-      { icon: Database, label: 'Memory', path: '/memory', navKey: 'memory', status: 'Beta' },
-      { icon: FileCode2, label: 'Knowledge', path: '/knowledge', navKey: 'knowledge', status: 'Beta' },
-    ],
-  },
-  {
-    label: 'Work',
-    items: [
-      { icon: FolderKanban, label: 'Projects', path: '/projects', navKey: 'projects', status: 'Beta' },
-      { icon: ShieldCheck, label: 'Proposals', path: '/proposals', navKey: 'proposals', status: 'Beta' },
-    ],
-  },
-];
-
 const badgeClass: Record<NavStatus, string> = {
   Beta: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   Soon: 'bg-muted text-muted-foreground/60',
@@ -78,9 +51,38 @@ const badgeClass: Record<NavStatus, string> = {
 };
 
 export default function AppShell() {
+  const { t } = useTranslation();
   const { visible, collapsed, saveCollapsed, loading } = useSidebarNav();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const navGroups: NavGroup[] = [
+    {
+      label: 'Overview',
+      items: [
+        { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/', navKey: 'dashboard' },
+        { icon: BarChart3, label: 'Analytics', path: '/analytics', navKey: 'analytics', status: 'Beta' },
+        { icon: HeartPulse, label: 'Health Check', path: '/health', navKey: 'health', status: 'Beta' },
+      ],
+    },
+    {
+      label: 'Assets',
+      items: [
+        { icon: Layers, label: 'Skills', path: '/skills', navKey: 'skills', status: 'Beta' },
+        { icon: Cpu, label: 'Agents', path: '/agents', navKey: 'agents', status: 'Beta' },
+        { icon: Box, label: 'MCP', path: '/mcp', navKey: 'mcp', status: 'Beta' },
+        { icon: Database, label: 'Memory', path: '/memory', navKey: 'memory', status: 'Beta' },
+        { icon: FileCode2, label: 'Knowledge', path: '/knowledge', navKey: 'knowledge', status: 'Beta' },
+      ],
+    },
+    {
+      label: 'Work',
+      items: [
+        { icon: FolderKanban, label: 'Projects', path: '/projects', navKey: 'projects', status: 'Beta' },
+        { icon: ShieldCheck, label: 'Proposals', path: '/proposals', navKey: 'proposals', status: 'Beta' },
+      ],
+    },
+  ];
 
   // Responsive: on mount, if collapsed setting does not exist, default to collapsed for window < 1200px
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function AppShell() {
                 <button
                   onClick={() => saveCollapsed(true)}
                   className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                  title="收起侧边栏"
+                  title={t('nav.collapse')}
                 >
                   <PanelLeftClose className="w-4 h-4" />
                 </button>
@@ -158,7 +160,7 @@ export default function AppShell() {
               <button
                 onClick={() => saveCollapsed(false)}
                 className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title="展开侧边栏"
+                title={t('nav.expand')}
               >
                 <PanelLeftOpen className="w-4 h-4" />
               </button>

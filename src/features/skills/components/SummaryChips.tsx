@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSkillsStore } from '../store';
 import { SkillView } from '../types';
 import { getCompatibleClient } from '../utils/clientMatcher';
@@ -20,6 +21,7 @@ export function SummaryChips() {
     statusFilter,
     sources
   } = useSkillsStore();
+  const { t } = useTranslation();
 
   // Apply dropdown filters to calculate count for Summary Chips
   const baseFiltered = useMemo(() => {
@@ -48,13 +50,13 @@ export function SummaryChips() {
 
   const chips: { view: SkillView; label: string; count: number }[] = [
     { view: 'all', label: 'Total', count: active.length },
-    { view: 'favorites', label: '常用', count: active.filter((s) => s.is_favorite === 1).length },
-    { view: 'missing_description', label: '缺描述', count: active.filter((s) => !s.description).length },
-    { view: 'uncategorized', label: '未分类', count: active.filter((s) => !s.category).length },
-    { view: 'needs_review', label: '待整理', count: active.filter((s) => s.needs_review === 1).length },
-    { view: 'needs_improvement', label: '待进化', count: active.filter((s) => s.needs_improvement === 1).length },
-    { view: 'duplicates', label: '疑似重复', count: dupCount },
-    { view: 'archived', label: '已归档', count: baseFiltered.filter((s) => s.is_archived === 1).length },
+    { view: 'favorites', label: t('skills.tag_frequent'), count: active.filter((s) => s.is_favorite === 1).length },
+    { view: 'missing_description', label: t('skills.tag_missing_desc'), count: active.filter((s) => !s.description).length },
+    { view: 'uncategorized', label: t('common.uncategorized'), count: active.filter((s) => !s.category).length },
+    { view: 'needs_review', label: t('skills.tag_organize'), count: active.filter((s) => s.needs_review === 1).length },
+    { view: 'needs_improvement', label: t('skills.tag_evolve'), count: active.filter((s) => s.needs_improvement === 1).length },
+    { view: 'duplicates', label: t('skills.tag_duplicate'), count: dupCount },
+    { view: 'archived', label: t('skills.tag_archived'), count: baseFiltered.filter((s) => s.is_archived === 1).length },
   ];
 
   return (
