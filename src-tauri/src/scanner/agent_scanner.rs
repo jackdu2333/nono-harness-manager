@@ -146,6 +146,7 @@ struct DetectionResult {
     config_path: Option<String>,
     log_path: Option<String>,
     bundle_id: Option<String>,
+    bundle_match_rule: Option<&'static str>,
     evidence: Vec<String>,
     confidence: &'static str, // "verified" | "probable" | "candidate"
     detection_source: &'static str,
@@ -195,6 +196,9 @@ fn run_detection(detector: &AgentDetector) -> Option<DetectionResult> {
     let mut config_path = None;
     let mut log_path = None;
     let mut bundle_id = None;
+    let mut bundle_match_rule = None;
+    let mut app_verified = false;
+    let mut app_probable = false;
 
     // 1. Check App in /Applications or ~/Applications
     for app_name in detector.app_names {
@@ -204,11 +208,33 @@ fn run_detection(detector: &AgentDetector) -> Option<DetectionResult> {
         ] {
             let full_path = format!("{}/{}", apps_dir, app_name);
             if Path::new(&full_path).exists() {
-                app_path = Some(full_path.clone());
                 evidence.push(format!("发现 App: {}", full_path));
                 if let Some(bid) = read_bundle_id(Path::new(&full_path)) {
-                    bundle_id = Some(bid.clone());
                     evidence.push(format!("Bundle ID: {}", bid));
+                    if detector.bundle_ids.contains(&bid.as_str()) {
+                        bundle_id = Some(bid);
+                        bundle_match_rule = Some("bundle_id_exact_match");
+                        evidence.push("Bundle ID 精确匹配 detector 注册表".to_string());
+                        app_path = Some(full_path.clone());
+                        app_verified = true;
+                    } else if detector.bundle_ids.is_empty() {
+                        bundle_id = Some(bid);
+                        bundle_match_rule = Some("app_name_match_bundle_unconfigured");
+                        evidence.push("App 名称命中，detector 暂无 bundle_id 精确规则".to_string());
+                        app_path = Some(full_path.clone());
+                        app_probable = true;
+                    } else {
+                        evidence.push(format!(
+                            "Bundle ID 不匹配 detector 注册表，跳过: {}",
+                            detector.bundle_ids.join(", ")
+                        ));
+                        return None;
+                    }
+                } else {
+                    bundle_match_rule = Some("app_name_match_bundle_unreadable");
+                    evidence.push("App 名称命中，但未能读取 Bundle ID".to_string());
+                    app_path = Some(full_path.clone());
+                    app_probable = true;
                 }
                 break;
             }
@@ -252,8 +278,12 @@ fn run_detection(detector: &AgentDetector) -> Option<DetectionResult> {
     let has_config = config_path.is_some();
     let has_log = log_path.is_some();
 
-    let (confidence, detection_source) = if has_app || has_cli {
-        ("verified", "app_or_cli")
+    let (confidence, detection_source) = if app_verified {
+        ("verified", "app_bundle_id")
+    } else if has_cli {
+        ("verified", "cli")
+    } else if has_app && app_probable {
+        ("probable", "app_name")
     } else if has_config && has_log {
         ("probable", "config_and_log")
     } else if has_config || has_log {
@@ -273,6 +303,7 @@ fn run_detection(detector: &AgentDetector) -> Option<DetectionResult> {
         config_path,
         log_path,
         bundle_id,
+        bundle_match_rule,
         evidence,
         confidence,
         detection_source,
@@ -283,6 +314,9 @@ fn result_to_agent(result: &DetectionResult, now: &str) -> Agent {
     let evidence_json = json!({
         "signals": &result.evidence,
         "confidence": result.confidence,
+        "bundle_id": result.bundle_id,
+        "bundle_match_rule": result.bundle_match_rule,
+        "log_adapter_key": result.detector_log_adapter_key,
     })
     .to_string();
 

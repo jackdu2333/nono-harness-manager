@@ -70,6 +70,7 @@ pub struct LlmUsage {
     pub total_tokens: u32,
 }
 
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Clone)]
 pub struct ProviderCapabilities {
     pub supports_tools: bool,
@@ -259,6 +260,7 @@ impl LlmClient {
         })
     }
 
+    #[cfg_attr(test, allow(dead_code))]
     pub async fn test_connection(
         provider: &str,
         base_url: &str,

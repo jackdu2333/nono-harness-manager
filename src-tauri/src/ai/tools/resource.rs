@@ -1,6 +1,5 @@
 use crate::ai::safe_tools::{sanitize_output, ToolContext, ToolOutput};
 use crate::ai::tools::mcp::sanitize_env_value;
-use crate::models::intelligence::{HarnessResourceContext, HarnessResourceSummary};
 use serde_json::{json, Value};
 use sqlx::{Row, SqlitePool};
 use std::path::{Path, PathBuf};

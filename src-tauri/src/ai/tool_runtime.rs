@@ -14,6 +14,7 @@ const TOOL_TIMEOUT_SECS: u64 = 10;
 pub struct ToolLoopResult {
     pub final_content: Option<String>,
     pub records: Vec<ToolCallRecord>,
+    #[cfg_attr(test, allow(dead_code))]
     pub messages: Vec<LlmMessage>,
 }
 

@@ -10,7 +10,7 @@ use tauri::{command, State};
 use uuid::Uuid;
 
 // Health 类型从 health 模块 re-export，保持 API 兼容
-pub use crate::health::types::{CheckSummary, HealthIssue, HealthReport};
+pub use crate::health::types::{HealthIssue, HealthReport};
 
 const MAX_LISTED_FILES: usize = 500;
 const MEMORY_SCAN_DEPTH: usize = 8;

@@ -5,4 +5,3 @@ pub mod engine;
 pub mod types;
 
 pub use engine::run_global_check;
-pub use types::{CheckSummary, HealthIssue, HealthReport};

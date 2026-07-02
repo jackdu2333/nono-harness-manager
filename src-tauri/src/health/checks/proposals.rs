@@ -21,7 +21,7 @@ pub async fn check(pool: &SqlitePool) -> Result<(usize, Vec<HealthIssue>), Strin
         let id: String = row.get("id");
         let resource_type: String = row.get("resource_type");
         let resource_id: String = row.get("resource_id");
-        let proposal_type: String = row.get("proposal_type");
+        let _proposal_type: String = row.get("proposal_type");
         let status: String = row.get("status");
         let created_at: String = row.get("created_at");
         let acknowledged_at: Option<String> = row.get("acknowledged_at");

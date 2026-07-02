@@ -1,13 +1,6 @@
 use chrono::Utc;
-use serde::Serialize;
 use sqlx::{Row, SqlitePool};
 use tauri::{command, State};
-
-#[derive(Debug, Serialize)]
-pub struct SettingEntry {
-    pub key: String,
-    pub value: Option<String>,
-}
 
 /// 通用 settings 读取，供前端获取任意 key-value 配置
 #[command]

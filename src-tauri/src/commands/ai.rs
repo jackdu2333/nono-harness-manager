@@ -371,16 +371,6 @@ pub async fn list_ai_tasks(
 
 // ── AI Chat (Phase 5) ──
 
-fn decode_api_key(stored: &str) -> Option<String> {
-    if let Some(encoded) = stored.strip_prefix(API_KEY_PREFIX) {
-        B64.decode(encoded.as_bytes())
-            .ok()
-            .and_then(|b| String::from_utf8(b).ok())
-    } else {
-        None
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatSession {
     pub id: String,

@@ -140,7 +140,6 @@ fn build_report(
     // 计算每个模块的评分
     let mut module_scores = Vec::new();
     let mut total_score = 0.0f64;
-    let mut total_weight = 0.0f64;
     let mut global_critical = 0usize;
     let mut global_error = 0usize;
     let mut index_critical = 0usize;
@@ -185,7 +184,6 @@ fn build_report(
         let mod_score = (*weight - penalty).max(0.0);
 
         total_score += mod_score;
-        total_weight += *weight;
 
         let mod_status = if c_count > 0 {
             "critical"

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct Skill {
     pub id: String,

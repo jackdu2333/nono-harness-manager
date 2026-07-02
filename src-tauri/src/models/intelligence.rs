@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HarnessResourceSummary {
     pub resource_type: String,
@@ -16,6 +17,7 @@ pub struct HarnessResourceSummary {
     pub status: Option<String>,
 }
 
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HarnessResourceContext {
     pub resource: HarnessResourceSummary,
@@ -23,6 +25,7 @@ pub struct HarnessResourceContext {
     pub evidence_files: Option<String>,
 }
 
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct IntelligenceProposal {
     pub id: String,
