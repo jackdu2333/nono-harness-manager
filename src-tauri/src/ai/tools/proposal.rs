@@ -69,32 +69,10 @@ fn is_proposal_type_allowed(resource_type: &str, proposal_type: &str) -> bool {
 }
 
 fn has_forbidden_keys(value: &Value) -> bool {
-    let forbidden_keys = [
-        "path",
-        "source_path",
-        "app_path",
-        "cli_path",
-        "config_path",
-        "log_path",
-        "command",
-        "args",
-        "env",
-        "launch_command",
-        "enabled",
-        "status",
-        "delete",
-        "execute",
-        "shell",
-        "token",
-        "api_key",
-        "secret",
-        "password",
-    ];
-
     match value {
         Value::Object(map) => {
             for (key, val) in map {
-                if forbidden_keys.contains(&key.as_str()) {
+                if is_forbidden_key(key) {
                     return true;
                 }
                 if has_forbidden_keys(val) {
@@ -112,6 +90,62 @@ fn has_forbidden_keys(value: &Value) -> bool {
         _ => {}
     }
     false
+}
+
+fn is_forbidden_key(key: &str) -> bool {
+    let normalized = key.to_lowercase();
+    let compact = normalized.replace('_', "").replace('-', "");
+    let exact_keys = [
+        "path",
+        "source_path",
+        "app_path",
+        "cli_path",
+        "config_path",
+        "log_path",
+        "command",
+        "args",
+        "env",
+        "launch_command",
+        "enabled",
+        "status",
+        "delete",
+        "execute",
+        "shell",
+        "token",
+        "api_key",
+        "access_token",
+        "refresh_token",
+        "secret",
+        "password",
+        "authorization",
+        "bearer",
+        "cookie",
+        "credential",
+        "credentials",
+        "private_key",
+    ];
+    let compact_keys = [
+        "sourcepath",
+        "apppath",
+        "clipath",
+        "configpath",
+        "logpath",
+        "launchcommand",
+        "apikey",
+        "accesstoken",
+        "refreshtoken",
+        "privatekey",
+    ];
+
+    exact_keys.contains(&normalized.as_str())
+        || compact_keys.contains(&compact.as_str())
+        || normalized.contains("token")
+        || normalized.contains("secret")
+        || normalized.contains("password")
+        || normalized.contains("authorization")
+        || normalized.contains("bearer")
+        || normalized.contains("cookie")
+        || normalized.contains("credential")
 }
 
 pub async fn create_governance_proposal(
@@ -199,4 +233,27 @@ pub async fn create_governance_proposal_with_creator(
     });
 
     Ok(sanitize_output(output))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn forbidden_keys_are_case_and_style_insensitive() {
+        let changes = json!({
+            "description": "safe",
+            "apiKey": "secret",
+            "nested": {
+                "accessToken": "token",
+                "Authorization": "Bearer abc"
+            }
+        });
+
+        assert!(has_forbidden_keys(&changes));
+        assert!(is_forbidden_key("refreshToken"));
+        assert!(is_forbidden_key("private-key"));
+        assert!(is_forbidden_key("credentials"));
+    }
 }

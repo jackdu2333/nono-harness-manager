@@ -85,18 +85,25 @@ export function ChatBox({ onNavigate }: ChatBoxProps) {
                   if (toolNames.includes('get_dashboard_summary')) {
                     inferredEvidence.push('已读取 Dashboard 状态数据');
                   }
-                  if (toolNames.includes('get_skill_analysis') || toolNames.includes('list_skills')) {
+                  if (
+                    toolNames.includes('get_skill_analysis') ||
+                    toolNames.includes('list_resources') ||
+                    toolNames.includes('get_resource_context')
+                  ) {
                     inferredEvidence.push('已读取本机 Skills 列表');
                     inferredActions.push('查看 Skills');
                   }
-                  if (toolNames.includes('list_agents')) {
+                  if (toolNames.includes('get_agent_analysis')) {
                     inferredEvidence.push('已读取本机 Agents 列表');
                     inferredActions.push('进入 Agents');
                   }
-                  if (toolNames.includes('list_mcp_servers')) {
+                  if (toolNames.includes('get_mcp_analysis')) {
                     inferredEvidence.push('已读取 MCP 配置状态');
                   }
-                  if (toolNames.includes('list_intelligence_proposals')) {
+                  if (
+                    toolNames.includes('list_pending_proposals') ||
+                    toolNames.includes('create_governance_proposal')
+                  ) {
                     inferredEvidence.push('已分析治理建议提案');
                     inferredActions.push('查看 Proposals');
                   }

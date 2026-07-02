@@ -70,6 +70,13 @@ fn redact_tool_arguments(arguments: Value) -> Value {
     redact_sensitive_fields(arguments)
 }
 
+fn skipped_tool_call_output() -> crate::ai::safe_tools::ToolOutput {
+    sanitize_output(json!({
+        "ok": false,
+        "error": "Tool call skipped: exceeded max tool calls per round"
+    }))
+}
+
 pub async fn run_tool_loop(
     client: LlmClient,
     mut messages: Vec<LlmMessage>,
@@ -215,6 +222,34 @@ pub async fn run_tool_loop(
             messages.push(tool_msg);
         }
 
+        for tool_call in tool_calls.iter().skip(MAX_TOOL_CALLS_PER_ROUND) {
+            let tool_output = skipped_tool_call_output();
+            let summary = generate_summary(&tool_output.data);
+            let parsed_args = serde_json::from_str::<Value>(&tool_call.function.arguments)
+                .map(redact_tool_arguments)
+                .unwrap_or(Value::Null);
+
+            records.push(ToolCallRecord {
+                round,
+                tool_call_id: tool_call.id.clone(),
+                tool_name: tool_call.function.name.clone(),
+                arguments: parsed_args,
+                success: false,
+                result_summary: summary,
+                error: Some("Tool call skipped: exceeded max tool calls per round".to_string()),
+                duration_ms: 0,
+            });
+
+            let tool_msg = LlmMessage {
+                role: "tool".to_string(),
+                content: Some(serde_json::to_string(&tool_output.data).unwrap_or_default()),
+                tool_calls: None,
+                tool_call_id: Some(tool_call.id.clone()),
+                name: Some(tool_call.function.name.clone()),
+            };
+            messages.push(tool_msg);
+        }
+
         round += 1;
     }
 
@@ -294,5 +329,17 @@ mod tests {
         assert!(!serialized.contains("sk-test"));
         assert!(!serialized.contains("secret-token"));
         assert!(!serialized.contains("secret-password"));
+    }
+
+    #[test]
+    fn skipped_tool_call_output_reports_limit_error() {
+        let output = skipped_tool_call_output();
+        let error = output
+            .data
+            .get("error")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+
+        assert!(error.contains("exceeded max tool calls per round"));
     }
 }

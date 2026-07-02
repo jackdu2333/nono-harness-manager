@@ -66,11 +66,13 @@ async fn run() -> Result<(), String> {
             );
         }
         "rollback" => {
+            ensure_mutation_allowed("rollback")?;
             let proposal_id = args.get(1).ok_or_else(usage)?;
             trust_policy::rollback_proposal(&pool, proposal_id, "harness_cli").await?;
             println!(r#"{{"id":"{}","status":"rolled_back"}}"#, proposal_id);
         }
         "reject" => {
+            ensure_mutation_allowed("reject")?;
             let proposal_id = args.get(1).ok_or_else(usage)?;
             trust_policy::reject_proposal(&pool, proposal_id, "harness_cli").await?;
             println!(r#"{{"id":"{}","status":"rejected"}}"#, proposal_id);
@@ -171,4 +173,31 @@ async fn create_proposal(
 
 fn usage() -> String {
     "Usage: harness_cli list [skill|mcp_server|agent] | context <skill|mcp_server|agent> <id> | propose <type> <id> <proposal_type> '<json>' | rollback <proposal_id> | reject <proposal_id>".to_string()
+}
+
+fn mutation_allowed(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+fn ensure_mutation_allowed(command: &str) -> Result<(), String> {
+    let value = env::var("HARNESS_ALLOW_MUTATION").ok();
+    if mutation_allowed(value.as_deref()) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "harness_cli {command} is a human/admin mutation command. Set HARNESS_ALLOW_MUTATION=1 to run it."
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mutation_guard_requires_explicit_env_value() {
+        assert!(!mutation_allowed(None));
+        assert!(!mutation_allowed(Some("true")));
+        assert!(mutation_allowed(Some("1")));
+    }
 }

@@ -421,6 +421,10 @@ fn build_chat_action_input(content: &str) -> serde_json::Value {
     })
 }
 
+fn chat_session_title(content: &str) -> String {
+    content.chars().take(50).collect()
+}
+
 /// Create a new chat session
 #[command]
 pub async fn create_chat_session(pool: State<'_, SqlitePool>) -> Result<ChatSession, String> {
@@ -513,11 +517,12 @@ pub async fn send_chat_message(
         Some(id) => id,
         None => {
             let id = uuid::Uuid::new_v4().to_string();
+            let title = chat_session_title(&input.content);
             sqlx::query(
                 "INSERT INTO ai_sessions (id, title, mode, created_at, updated_at) VALUES (?, ?, 'chat', ?, ?)",
             )
             .bind(&id)
-            .bind(&input.content[..input.content.len().min(50)])
+            .bind(&title)
             .bind(&now)
             .bind(&now)
             .execute(&*pool)
@@ -745,5 +750,12 @@ mod tests {
         assert_eq!(input["user_message_length"], 21);
         assert!(!serialized.contains("secret password token"));
         assert!(input.get("user_message").is_none());
+    }
+
+    #[test]
+    fn chat_session_title_truncates_by_chars_without_panicking() {
+        let title = chat_session_title(&"中文输入".repeat(20));
+        assert_eq!(title.chars().count(), 50);
+        assert!(title.is_char_boundary(title.len()));
     }
 }
